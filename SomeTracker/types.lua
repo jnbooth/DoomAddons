@@ -31,7 +31,7 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 --- @field color Color
 --- @field duration string
 --- @field enabled boolean
---- @field grow "top" | "bottom"
+--- @field grow "TOP" | "BOTTOM"
 --- @field iconSize number
 --- @field markCrits boolean
 --- @field misses "all" | "total" | "none"
@@ -82,11 +82,10 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 
 --- @class SomeTrackerCore: HandlerCore
 --- @field highscores { [string]: Score }
---- @field scoring ScoringSettings
---- @field trackers { [string]: Tracker }
+--- @field ["High Scores"] ScoringSettings
+--- @field Trackers { [string]: Tracker }
 
 --- @class CorePath
---- @field [1] "trackers"
---- @field [2] string Tracker name.
---- @field [3] string Setting name.
---- @field [4]? string Optional nested setting name.
+--- @field [1] string Tracker name.
+--- @field [2] string Setting name.
+--- @field [3]? string Optional nested setting name.

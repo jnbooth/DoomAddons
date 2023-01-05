@@ -8,9 +8,7 @@ local pairs, tinsert = pairs, tinsert
 local opt, orderNum = D.opt, A.orderNum
 
 --- @class SomeTrackerSettings: HandlerSettings
-local Settings = {
-  prefix = "trackers"
-}
+local Settings = {}
 N.Settings = Settings
 
 ------------
@@ -22,6 +20,7 @@ defaults.db = {
   profile = {}
 }
 defaults.options = opt("parent", {
+  name = "Trackers",
   args = {
     { "add", "input", "Add tracker", {
       width = "full",
@@ -48,7 +47,7 @@ defaults.tracker = {
   duration = "3",
   over = "exclude",
   lock = true,
-  grow = "top",
+  grow = "TOP",
   anchor = "CENTER",
   offsetX = -210,
   offsetY = 100,
@@ -183,7 +182,7 @@ function Settings:BuildTrackerSettings(trackerName, tracker)
       { "space" },
       { "grow", "select", {
         width = "half",
-        values = { top = "up", bottom = "down" }
+        values = { TOP = "Up", BOTTOM = "Down" }
       } },
       { "anchor" },
       { "lock", { width = "half" } },

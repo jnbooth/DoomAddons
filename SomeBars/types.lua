@@ -73,13 +73,12 @@
 --- @field conf BarGroup
 
 --- @class SomeBarsCore: HandlerCore
---- @field groups { [string]: BarGroup }
+--- @field Groups { [string]: BarGroup }
 
 --- @class CorePath
---- @field [1] "groups"
---- @field [2] string Group name.
---- @field [3] string Setting name.
---- @field [4] string Optional bar name.
---- @field [5]? string Optional bar setting name.
---- @field [6]? number | string Optional bar item name.
---- @field [7]? string Optional bar item setting name.
+--- @field [1] string Group name.
+--- @field [2] string Setting name.
+--- @field [3] string Optional bar name.
+--- @field [4]? string Optional bar setting name.
+--- @field [5]? number | string Optional bar item name.
+--- @field [6]? string Optional bar item setting name.

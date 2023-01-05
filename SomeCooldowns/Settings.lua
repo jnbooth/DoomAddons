@@ -44,6 +44,7 @@ defaults.db = {
   }
 }
 defaults.options = opt("parent", {
+  name = "",
   set = "Rebuild",
   args = {
     { "display", "description", "Display all:", {

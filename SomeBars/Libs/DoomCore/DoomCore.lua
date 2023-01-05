@@ -73,12 +73,12 @@ local orientations = {
 D.orientations = orientations
 local orientGrowth = {
   HORIZONTAL = {
-    [false] = "right",
-    [true] = "left"
+    [false] = "RIGHT",
+    [true] = "LEFT"
   },
   VERTICAL = {
-    [false] = "top",
-    [true] = "bottom"
+    [false] = "TOP",
+    [true] = "BOTTOM"
   }
 }
 D.orientGrowth = orientGrowth
@@ -238,7 +238,7 @@ local function updateFrame(frame, c, anchor, parent)
   parent = parent or UIParent
 
   local height, lock, offsetX, offsetY, scale, width = c.height, c.lock, c.offsetX, c.offsetY, c.scale, c.width
-  if anchor and not anchors[anchor:lower()] then anchor = nil end
+  if anchor and not anchors[anchor] then anchor = nil end
 
   local unlocked = false
   if width then frame:SetWidth(width) end
@@ -422,6 +422,16 @@ D.makeGrid = makeGrid
 -- Crawling
 -------------------
 
+--- @overload fun(info: AceInfo, first: number, last: number): AceInfo
+--- @overload fun(info: tablekey[], first: number, last: number): tablekey[]
+local function subInfo(info, first, last)
+  local sub = sublist(info, first, last) --[[@as AceInfo]]
+  setIndex(sub, info)
+  return sub
+end
+
+D.subInfo = subInfo
+
 local type_tablekey = type_boolean + type_number + type_string
 
 --- @param node table
@@ -432,10 +442,9 @@ local type_tablekey = type_boolean + type_number + type_string
 local function crawl(node, key, noChildren, raw)
   assertType(node, type_table, key, type_table, 3)
   local options = key.options
-  _G.testKey = key
   if options then
     local prefix = options.name
-    if prefix then
+    if prefix and prefix ~= "" then
       node = node[prefix]
     end
   end
@@ -483,7 +492,7 @@ function NodeCrawler:Get(key)
 end
 
 --- @generic T
---- @param key tablekey[]
+--- @param key AceInfo | tablekey[]
 --- @param value T
 --- @param noOverride? boolean
 --- @return T | nil
@@ -494,7 +503,7 @@ function NodeCrawler:Set(key, value, noOverride)
     if not noOverride then self.core = value end
     return self.core
   end
-  local parent = crawl(self.core, sublist(key, 1, -2), value == nil, true)
+  local parent = crawl(self.core, subInfo(key, 1, -2), value == nil, true)
   if type(parent) ~= "table" then return end
   local child = key[#key]
   if not (noOverride and parent[child] ~= nil) then
@@ -515,7 +524,7 @@ end
 function NodeCrawler:Incr(key, amount)
   if (amount == nil) then amount = 1 end
   assertType(key, type_table, amount, type_number, 3)
-  local parent = crawl(self.core, sublist(key, 1, -2), false, true)
+  local parent = crawl(self.core, subInfo(key, 1, -2), false, true)
   local child = key[#key]
   parent[child] = amount + (parent[child] or 0)
   return parent[child]
@@ -544,7 +553,7 @@ D.nappend = nappend
 --- @return nil
 function NodeCrawler:Append(key, ...)
   assertType(key, type_table, 3)
-  local parent = crawl(self.core, sublist(key, 1, -2), false, true)
+  local parent = crawl(self.core, subInfo(key, 1, -2), false, true)
   if parent ~= nil and type(parent) ~= "table" then return end
   local childKey = key[#key]
   nappend(parent, childKey, ...)
@@ -657,7 +666,7 @@ end
 --- @param info tablekey[]
 --- @return table | nil
 function Configuration:GetParent(info)
-  local parent = self:Get(sublist(info, 1, -2))
+  local parent = self:Get(subInfo(info, 1, -2))
   if type(parent) == "table" then return parent end
 end
 
@@ -779,7 +788,7 @@ end
 --- @param ... any
 --- @return nil
 function Handler:Output(...)
-  if self.core._debug and self.core._debug.print then print(self.name, " | ", tostrings(...)) end
+  if self.core.Extras and self.core.Extras.print then print(self.name, " | ", tostrings(...)) end
 end
 
 --- @return number
@@ -851,7 +860,7 @@ function Handler:Reset(registered)
 
   local settings = self.settings
   if settings then
-    settings.options = { type = "group", args = {}, name = settings.prefix }
+    settings.options = { type = "group", args = {} }
     local defaults = self.defaults
     if defaults and defaults.options then
       settings.options = defaults.options
@@ -940,7 +949,7 @@ end
 function Handler:DebugOptions(args)
   local debug = {
     type = "group",
-    name = "_debug",
+    name = "Extras",
     handler = self,
     get = "ConfGet",
     set = "ConfSet",
@@ -956,7 +965,6 @@ function Handler:DebugOptions(args)
         type = "toggle",
         name = "Print debug messages",
         width = "full",
-        set = "ConfSetDebug",
         order = 1
       },
     }

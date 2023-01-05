@@ -20,7 +20,7 @@ end
 --- @return nil
 local function resetOptions()
   options = {
-    name = "scoring",
+    name = "High Scores",
     get = "ConfGet",
     set = "ConfSet",
     type = "group",

@@ -14,7 +14,7 @@ local D = LibStub:GetLibrary("DoomCore-2.1")
 --- @field lib SomeCooldownsLib
 --- @field settings SomeCooldownsSettings
 local Addon = D.Addon(shortName, "Some Cooldowns", N)
-Addon.version = 0.3
+Addon.version = 0.4
 
 local _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon, GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime, ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack = _G
     , ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon,
@@ -24,7 +24,8 @@ local GetContainerNumSlots, GetContainerItemID = C_Container.GetContainerNumSlot
 local GetNumToys = C_ToyBox.GetNumToys --[[@as fun(): number]]
 local GetToyFromIndex = C_ToyBox.GetToyFromIndex --[[@as fun(itemIndex: number): number, string, number, boolean, boolean, Enum.ItemQuality]]
 local CheckPlayerHasControl = ArkInventory.CheckPlayerHasControl
-local getItemID, nilSort, tooltip, tooltipAnchors, makeGrid, updateFrame = A.getItemID, A.nilSort, A.tooltip,
+local colUnpack, getItemID, nilSort, tooltip, tooltipAnchors, makeGrid, updateFrame = A.colUnpack, A.getItemID, A.nilSort
+    , A.tooltip,
     D.tooltipAnchors, D.makeGrid, D.updateFrame
 local GetItemCooldown = GetItemCooldown --[[@as fun(itemID: number): number, number, number]]
 
@@ -106,20 +107,26 @@ end
 --- @param version number
 --- @return boolean
 function Addon:Migrate(version)
-  if version >= 0.3 then return false end
+  if version < 0.1 then return true end
   local core = self.core
-  local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth", "tooltipAnchor" }
-  for _, field in ipairs(fieldsToMigrate) do
-    local old = core[field]
-    if type(old) == "string" then
-      core[field] = old:upper()
+  if version < 0.2 then
+    if core.rowGrowth == "up" then core.rowGrowth = "TOP" end
+    if core.rowGrowth == "down" then core.rowGrowth = "BOTTOM" end
+  end
+  if version < 0.3 then
+    local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth", "tooltipAnchor" }
+    for _, field in ipairs(fieldsToMigrate) do
+      local old = core[field]
+      if type(old) == "string" then
+        core[field] = old:upper()
+      end
     end
   end
-  if version >= 0.2 then return false end
-  if core.rowGrowth == "up" then core.rowGrowth = "TOP" end
-  if core.rowGrowth == "down" then core.rowGrowth = "BOTTOM" end
-  if version >= 0.1 then return false end
-  return true
+  if version < 0.4 then
+    core.Extras = core--[[@as any]] ._debug
+    core._debug = nil
+  end
+  return false
 end
 
 --- @param info? CorePath
@@ -501,7 +508,7 @@ function Addon:InitButton(button)
   button.cooldownFrame = _G[button:GetName() .. "Cooldown"]
   button.cooldownFrame:SetEdgeTexture("Interface\\Cooldown\\edge-LoC")
   button.cooldownFrame:SetScript("OnHide", function() self:Sort() end)
-  button.cooldown:SetSwipeColor(self.core.color)
+  button.cooldown:SetSwipeColor(colUnpack(self.core.color))
   button.cooldown:SetHideCountdownNumbers(not self.core.text)
   button:Disable()
   tooltip(button, self.core.tooltip, self.core.tooltipOverride and self.core.tooltipAnchor or nil,
@@ -522,7 +529,7 @@ function Addon:AddButton(buttonType, subject, time, duration, texture)
       return
     end
   end
-  local somebars = self.core._debug.somebars and self.lib.somebars
+  local somebars = self.core.Extras.somebars and self.lib.somebars
   if somebars then
     local name
     if buttonType == "spell" then

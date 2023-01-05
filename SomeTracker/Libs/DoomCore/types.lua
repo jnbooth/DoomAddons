@@ -97,13 +97,13 @@ DoomCoreLocker = {}
 --- @field print boolean | nil
 
 --- @class HandlerCore
---- @field _debug DebugConfig | nil
+--- @field Extras DebugConfig | nil
 --- @field _version number
 
 --- @class HandlerSettingsOptions
 --- @field handler Handler
 --- @field args table
---- @field prefix? string
+--- @field name? string
 
 --- @class HandlerSettings
 --- @field options HandlerSettingsOptions
@@ -111,7 +111,7 @@ DoomCoreLocker = {}
 --- @field defaults table | nil
 --- @field crawler NodeCrawler
 --- @field custom table | nil
---- @field prefix? string
+--- @field name? string
 
 --- @class HandlerLib
 --- @field db AceDBObject-3.0

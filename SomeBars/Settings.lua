@@ -8,7 +8,7 @@ local D = LibStub("DoomCore-2.1")
 
 local GetSpellInfo, next, select, tconcat, tinsert, tostring, type, UIParent, UnitRace = GetSpellInfo, next, select,
     tconcat, tinsert, tostring, type, UIParent, UnitRace
-local sublist, tappend, convertDims, orderNum, opt = A.sublist, A.tappend, D.convertDims, A.orderNum, D.opt
+local tappend, convertDims, orderNum, opt, subInfo = A.tappend, D.convertDims, A.orderNum, D.opt, D.subInfo
 
 ------------
 -- Defaults
@@ -19,6 +19,7 @@ defaults.db = {
   profile = {}
 }
 defaults.options = opt("parent", {
+  name = "Groups",
   args = {
     { "add", "input", "Add group", {
       set = "AddGroup",
@@ -82,6 +83,7 @@ function Settings:BuildGroupSettings(groupName, group)
   local opts = opt(100 + orderNum(name), "group", name, {
     set = "Rebuild",
     args = {
+      { "bars", "parent" },
       { "rename", "input", {
         get = "GetParentName",
         set = "RenameGroup",
@@ -110,7 +112,7 @@ function Settings:BuildGroupSettings(groupName, group)
       { "space" },
       { "dim1", "range", {
         name = function(info)
-          return convertDims(info.handler:Get(tappend(sublist(info, 1, -2), "orientation")), "Width", "Height")
+          return convertDims(info.handler:Get(tappend(subInfo(info, 1, -2), "orientation")), "Width", "Height")
         end,
         min = 1,
         max = dim1,
@@ -121,7 +123,7 @@ function Settings:BuildGroupSettings(groupName, group)
       } },
       { "dim2", "range", {
         name = function(info)
-          return convertDims(info.handler:Get(tappend(sublist(info, 1, -2), "orientation")), "Height", "Width")
+          return convertDims(info.handler:Get(tappend(subInfo(info, 1, -2), "orientation")), "Height", "Width")
         end,
         min = 1,
         max = dim2,
@@ -149,7 +151,7 @@ function Settings:BuildGroupSettings(groupName, group)
           } },
           { "barName", "input", {
             name = function(info)
-              return "New " .. (info.handler:Get(tappend(sublist(info, 1, -2), "barType")) or "spell")
+              return "New " .. (info.handler:Get(tappend(subInfo(info, 1, -2), "barType")) or "spell")
             end,
             set = "AddBar"
           } }
@@ -158,6 +160,7 @@ function Settings:BuildGroupSettings(groupName, group)
     }
   })
   self.crawler:Set({ groupName }, opts)
+  self:BuildBarSettings(groupName, "Default", group.Default)
   for barName, bar in pairs(group.bars) do
     self:BuildBarSettings(groupName, barName, bar)
   end
@@ -180,7 +183,7 @@ end
 --- @param bar Bar
 function Settings:BuildBarSettings(groupName, name, bar)
   bar.newColor = bar.color
-  local tableKey = { groupName, "args", name }
+  local tableKey = { groupName, "args", "bars", "args", name }
   local barSettings = opt(nil, "group", name, {
     order = function() return bar.position end,
     icon = function() return select(3, GetSpellInfo(name)) end,
@@ -242,7 +245,7 @@ function Settings:BuildBarSettings(groupName, name, bar)
       } },
       { "dim1", "range", {
         name = function(info)
-          return convertDims(info.handler:Get(tappend(sublist(info, 1, -2), "orientation")), "Width", "Height")
+          return convertDims(info.handler:Get(tappend(subInfo(info, 1, -2), "orientation")), "Width", "Height")
         end,
         step = 0.5,
         min = 1,
@@ -254,7 +257,7 @@ function Settings:BuildBarSettings(groupName, name, bar)
       } },
       { "dim2", "range", {
         name = function(info)
-          return convertDims(info.handler:Get(tappend(sublist(info, 1, -2), "orientation")), "Height", "Width")
+          return convertDims(info.handler:Get(tappend(subInfo(info, 1, -2), "orientation")), "Height", "Width")
         end,
         min = 1,
         max = 1000,
@@ -278,7 +281,7 @@ function Settings:BuildBarSettings(groupName, name, bar)
         hasAlpha = true,
         get = "ConfGetWatchColor",
         set = "ConfSetWatchColor",
-        name = function() return watch .. self:AliasString(bar[watch]) end,
+        name = watch,
         order = i
       }
       barSettings.args[watch .. "delete"] = {

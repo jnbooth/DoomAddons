@@ -10,16 +10,17 @@ local D = LibStub("DoomCore-2.1")
 --- @field core SomeBarsCore
 --- @field settings SomeBarsSettings
 local Addon = D.Addon(shortName, "Some Bars", N)
-Addon.version = 0.3
+Addon.version = 0.8
 
 local CreateFrame, GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell, IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent = CreateFrame
     , GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell,
     IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent
-local assertType, colUnpack, flip, getItemID, nilSort, setIndex, sublist, tappend, TypeCode = A.assertType, A.colUnpack,
+local assertType, colUnpack, flip, getItemID, nilSort, setIndex, tappend, TypeCode = A.assertType, A.colUnpack,
     A.flip,
-    A.getItemID, A.nilSort, A.setIndex, A.sublist, A.tappend, A.TypeCode
-local borders, convertDims, direction, growAnchors, HORIZONTAL, NodeCrawler, orientGrowth, updateFrame = D.borders,
-    D.convertDims, D.direction, D.growAnchors, D.HORIZONTAL, D.NodeCrawler, D.orientGrowth, D.updateFrame
+    A.getItemID, A.nilSort, A.setIndex, A.tappend, A.TypeCode
+local borders, convertDims, direction, growAnchors, HORIZONTAL, NodeCrawler, orientGrowth, subInfo, updateFrame = D.borders
+    ,
+    D.convertDims, D.direction, D.growAnchors, D.HORIZONTAL, D.NodeCrawler, D.orientGrowth, D.subInfo, D.updateFrame
 
 local type_number, type_string, type_table = TypeCode.Number, TypeCode.String, TypeCode.Table
 
@@ -81,20 +82,23 @@ function Addon:OnLoad(registered)
   end
   self.exports = {}
   local core = self.core
-  local groups = core.groups
+  local groups = core.Groups
   if groups == nil then
     groups = {}
-    core.groups = groups
+    core.Groups = groups
+  end
+  for _, group in pairs(core.Groups) do
+    for _, bar in pairs(group.bars) do
+      bar.watch = bar.watch or {}
+    end
   end
 
   for groupName, group in pairs(groups) do
+    local default = group.Default
+    self:AutoDefault(default)
     for barName, bar in pairs(group.bars) do
       bar.newColor = bar.color
-      if barName == "Default" then
-        self:AutoDefault(bar)
-      else
-        setIndex(bar, group.Default)
-      end
+      setIndex(bar, default)
     end
     self:BuildGroup(groupName)
   end
@@ -103,39 +107,84 @@ end
 --- @param version number
 --- @return boolean
 function Addon:Migrate(version)
+  if version < 0.1 then return true end
   local core = self.core
-  local groups = core.groups
+  local groups = core.Groups
   if groups == nil then
     groups = {}
-    core.groups = groups
+    core.Groups = groups
   end
-  for groupName, group in pairs(core) do
-    if type(group) == "table" and group.type == "group" then
-      core[groupName] = nil
-      local bars = {}
-      group.bars = bars
-      group.grow = group.grow:upper()
-      group.orientation = group.orientation:upper()
-      group.bars = {}
-      for barName, bar in pairs(bars) do
-        group[barName] = nil
-        bars[barName] = bar
+  if version < 0.2 then
+    for groupName, group in pairs(core) do
+      if type(group) == "table" and group.type == "group" then
+        local growth = group--[[@as { growth: string | nil }]] .growth
+        if growth == "up" then group.grow = "TOP" end
+        if growth == "down" then group.grow = "BOTTOM" end
+        if group.grow == "up" then group.grow = "TOP" end
+        if group.grow == "down" then group.grow = "BOTTOM" end
       end
-      groups[groupName] = group
     end
   end
-  if version >= 0.2 then return false end
-  for groupName, group in pairs(self.core) do
-    if type(group) == "table" and group.type == "group" then
-      local growth = group--[[@as { growth: string | nil }]] .growth
-      if growth == "up" then group.grow = "TOP" end
-      if growth == "down" then group.grow = "BOTTOM" end
-      if group.grow == "up" then group.grow = "TOP" end
-      if group.grow == "down" then group.grow = "BOTTOM" end
+  if version < 0.3 then
+    for groupName, group in pairs(core) do
+      if type(group) == "table" and group.type == "group" then
+        core[groupName] = nil
+        group.grow = group.grow:upper()
+        group.orientation = group.orientation:upper()
+        groups[groupName] = group
+      end
     end
   end
-  if version >= 0.1 then return false end
-  return true
+  if version < 0.4 then
+    core.Extras = core--[[@as any]] ._debug
+    core._debug = nil
+    core.Groups = core--[[@as any]] .groups
+    core.groups = nil
+  end
+  if version < 0.5 then
+    for _, group in pairs(core.Groups) do
+      local bars = group.bars
+      if bars == nil then
+        bars = {}
+        group.bars = bars
+      end
+      for barName, bar in pairs(group) do
+        if type(bar) == "table" and bar.type == "bar" then
+          group[barName] = nil
+          bars[barName] = bar
+        end
+      end
+    end
+  end
+  if version < 0.6 then
+    for _, group in pairs(core.Groups) do
+      for _, bar in pairs(group.bars) do
+        bar.watch = bar.watch or {}
+      end
+    end
+  end
+  if version < 0.7 then
+    for _, group in pairs(core.Groups) do
+      local default = group.bars.Default
+      if default then
+        group.Default = default
+        group.bars.Default = nil
+      end
+    end
+  end
+  if version < 0.8 then
+    for _, group in pairs(core.Groups) do
+      for _, bar in pairs(group.bars) do
+        for watchName, watch in pairs(bar) do
+          if type(watch) == "table" and watch.type == "also" then
+            bar.watch[watchName] = watch
+            bar[watchName] = nil
+          end
+        end
+      end
+    end
+  end
+  return false
 end
 
 ----------------
@@ -149,15 +198,15 @@ function Addon:Rebuild(info, r, g, b, a)
   if info then
     self:ConfSet(info, r, g, b, a)
   end
-  self:BuildGroup(info[2])
+  self:BuildGroup(info[1])
 end
 
 --- @overload fun(self: SomeBars, info: CorePath, r: number, g: number, b: number, a: number): nil
 --- @overload fun(self: SomeBars, info: CorePath, r: number, g: number, b: number): nil
 function Addon:UpdateBarColor(info, r, g, b, a)
   self:ConfSet(info, r, g, b, a)
-  self:ConfSet(tappend(sublist(info, 2, -2), info[#info - 1], "color"), r, g, b, a)
-  self:BuildGroup(info[2])
+  self:ConfSet(tappend(subInfo(info, 1, -2), info[#info - 1], "color"), r, g, b, a)
+  self:BuildGroup(info[1])
 end
 
 --- @param info CorePath
@@ -165,7 +214,7 @@ end
 --- @return nil
 function Addon:AddGroup(info, name)
   assertType(info, type_table, name, type_string)
-  local group = self:Make(self.core, "group", name, true)
+  local group = self:Make(self.core.Groups, "group", name, true)
   if not group then
     return
   end
@@ -178,16 +227,16 @@ end
 --- @return nil
 function Addon:RenameGroup(info, name)
   assertType(info, type_table, name, type_string)
-  local core = self.core
-  if core[name] and core[name].type then
+  local groups = self.core.Groups
+  if groups[name] then
     return
   end
-  local old = info[2]
-  core[name] = core[old]
-  core[old] = nil
+  local old = info[1]
+  groups[name] = groups[old]
+  groups[old] = nil
 
   self.settings.crawler.old = nil
-  frames[name[1]] = frames[old[1]]
+  frames[name] = frames[old[1]]
   frames[old[1]] = nil
   self:BuildGroup(name)
 end
@@ -196,7 +245,7 @@ end
 --- @return nil
 function Addon:DeleteGroup(info)
   assertType(info, type_table)
-  local group = info[2]
+  local group = info[1]
   self.core[group] = nil
   self.settings.options.args[group] = nil
 end
@@ -205,7 +254,7 @@ end
 --- @return nil
 function Addon:ResetGroup(info)
   --- @type BarGroup
-  local group = self.core.groups[info[2]]
+  local group = self.core.Groups[info[1]]
   for barName, bar in pairs(group.bars) do
     bar.combat = nil
     bar.noncombat = nil
@@ -223,10 +272,10 @@ end
 --- @return nil
 function Addon:AddBar(info, name)
   assertType(info, type_table, name, type_string)
-  local groupName = info[2]
-  local group = self.core.groups[groupName]
+  local groupName = info[1]
+  local group = self.core.Groups[groupName]
   --- @type Bar
-  local bar = self:Make(group, "bar", name, true)
+  local bar = self:Make(group.bars, "bar", name, true)
   if not bar then
     return
   end
@@ -246,9 +295,9 @@ end
 --- @return nil
 function Addon:DeleteBar(info)
   assertType(info, type_table)
-  self:Set(sublist(info, 1, -2), nil)
-  self.settings.crawler:Set({ info[2], "args", info[3] }, nil)
-  self:BuildGroup(info[2])
+  self:Set(subInfo(info, 1, -2), nil)
+  self.settings.crawler:Set({ info[1], "args", info[2] }, nil)
+  self:BuildGroup(info[1])
 end
 
 --- @param info CorePath
@@ -256,7 +305,7 @@ end
 --- @return nil
 function Addon:Watch(info, val)
   assertType(info, type_table, val, type_number + type_string)
-  local groupName = info[2]
+  local groupName = info[1]
   --- @type Bar | nil
   local bar = self:GetParent(info)
   if not bar then
@@ -275,7 +324,7 @@ end
 --- @param name string | number
 function Addon:Unwatch(info, name)
   assertType(info, type_table)
-  self:Set(sublist(info, 1, -1), nil)
+  self:Set(subInfo(info, 1, -1), nil)
 end
 
 --- @class ColorPath: CorePath
@@ -284,7 +333,7 @@ end
 --- @param info ColorPath
 --- @return CorePath
 local function watchColorKey(info)
-  return tappend(sublist(info, 1, -2), strsub(info[#info], 0, - #"color" - 1), "color")
+  return tappend(subInfo(info, 1, -2), strsub(info[#info], 0, - #"color" - 1), "color")
 end
 
 --- @param info ColorPath
@@ -301,7 +350,7 @@ end
 --- @return nil
 function Addon:ConfSetWatchColor(info, r, g, b, a)
   self:ConfSet(watchColorKey(info), r, g, b, a)
-  self:BuildGroup(info[2])
+  self:BuildGroup(info[1])
 end
 
 --- @param bar Bar
@@ -319,7 +368,7 @@ end
 --- @return nil
 function Addon:BuildGroup(groupName)
   assertType(groupName, type_string)
-  local group = self.core.groups[groupName]
+  local group = self.core.Groups[groupName]
   self.settings:BuildGroupSettings(groupName, group)
   self:BuildGroupFrame(groupName, group)
 end
@@ -328,7 +377,7 @@ end
 --- @return number
 function Addon:BarCount(groupName)
   assertType(groupName, type_string)
-  return self.core.groups[groupName].count or 0
+  return self.core.Groups[groupName].count or 0
 end
 
 --- @param spell number | string
@@ -678,13 +727,13 @@ function Addon:BuildGroupFrame(name, group)
     end
     tinsert(bars, barName)
   end
-  nilSort(bars, function(barName) return group[barName].position end)
+  nilSort(bars, function(barName) return group.bars[barName].position end)
 
   local barSlots = {}
   local slotI = 0
   local atPos = 0
   for _, barName in pairs(bars) do
-    local bar = group[barName]
+    local bar = group.bars[barName]
     local position = bar.position
     if position then
       if position > atPos then
@@ -704,7 +753,6 @@ function Addon:BuildGroupFrame(name, group)
     local slot = frame_slots[i]
     if not slot then
       slot = CreateFrame("Frame", self.shortName .. name .. "_" .. i, frame) --[[@as BarFrame]]
-      tinsert(frames, slot)
       slot:SetFrameStrata("LOW")
       self:InitSlot(slot)
       frame_slots[i] = slot

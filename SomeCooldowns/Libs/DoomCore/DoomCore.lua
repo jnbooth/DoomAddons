@@ -2,7 +2,7 @@ local LibStub = LibStub
 
 --- @meta
 --- @class DoomCore-2.1
-local D = LibStub:NewLibrary("DoomCore-2.1", 3)
+local D = LibStub:NewLibrary("DoomCore-2.1", 5)
 if not D then return end
 
 local A = LibStub("Abacus-2.0")
@@ -432,6 +432,7 @@ local type_tablekey = type_boolean + type_number + type_string
 local function crawl(node, key, noChildren, raw)
   assertType(node, type_table, key, type_table, 3)
   local options = key.options
+  _G.testKey = key
   if options then
     local prefix = options.name
     if prefix then
@@ -778,7 +779,7 @@ end
 --- @param ... any
 --- @return nil
 function Handler:Output(...)
-  if self.core._debug and self.core._debug.print then print(self.name, " | ", tostrings(...)) end
+  if self.core.Extras and self.core.Extras.print then print(self.name, " | ", tostrings(...)) end
 end
 
 --- @return number
@@ -850,7 +851,7 @@ function Handler:Reset(registered)
 
   local settings = self.settings
   if settings then
-    settings.options = { type = "group", args = {}, name = settings.prefix }
+    settings.options = { type = "group", args = {}, name = settings.name }
     local defaults = self.defaults
     if defaults and defaults.options then
       settings.options = defaults.options
@@ -867,6 +868,23 @@ function Handler:Reset(registered)
   if settings and settings.options then
     self.lib.registry:RegisterOptionsTable(self.name, settings.options)
   end
+end
+
+--- @param version number
+--- @return boolean
+function Handler:Migrate(version)
+  return false
+end
+
+--- @return boolean
+function Handler:RunMigration()
+  local oldVersion = self:GetVersion() or 0
+  local shouldReset = self:Migrate(oldVersion)
+  if shouldReset then
+    self:ResetDB()
+  end
+  self:SetVersion(self.version)
+  return shouldReset
 end
 
 --- @param ... tablekey[]
@@ -922,7 +940,7 @@ end
 function Handler:DebugOptions(args)
   local debug = {
     type = "group",
-    name = "_debug",
+    name = "Extras",
     handler = self,
     get = "ConfGet",
     set = "ConfSet",
@@ -938,7 +956,6 @@ function Handler:DebugOptions(args)
         type = "toggle",
         name = "Print debug messages",
         width = "full",
-        set = "ConfSetDebug",
         order = 1
       },
     }

@@ -37,7 +37,7 @@ function ArkInventory.CheckPlayerHasControl() end
 --- @field somebars boolean | nil
 
 --- @class SomeCooldownsCore: HandlerCore, FrameSettings
---- @field _debug SomeCooldownsDebugConfig | nil
+--- @field Extras SomeCooldownsDebugConfig | nil
 --- @field group { [number]: ListedCooldown }
 --- @field color Color
 --- @field displayItems boolean

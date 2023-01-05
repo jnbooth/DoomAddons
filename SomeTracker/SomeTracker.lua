@@ -11,15 +11,15 @@ local D = LibStub("DoomCore-2.1")
 --- @field core SomeTrackerCore
 --- @field settings SomeTrackerSettings
 local Addon = D.Addon(shortName, "Some Tracker", N)
-Addon.version = 1.3
+Addon.version = 1.4
 
 local CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace = CreateFrame
     , CombatLog_Object_IsA, floor, GetTime, GetSpecialization,
     GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type,
     unpack, UIParent, AuraUtil.FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace
 
-local abbrev, assertType, capitalize, colPack, colUnpack, isEmpty, nilSort, sublist, NodeCrawler, setFont, TypeCode, updateFrame = A
-    .abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, A.sublist, D.NodeCrawler,
+local abbrev, assertType, capitalize, colPack, colUnpack, isEmpty, nilSort, subInfo, NodeCrawler, setFont, TypeCode, updateFrame = A
+    .abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, D.subInfo, D.NodeCrawler,
     D.setFont, A.TypeCode, D.updateFrame
 
 local type_string, type_table = TypeCode.String, TypeCode.Table
@@ -79,11 +79,11 @@ end
 function Addon:OnLoad(registered)
   if registered == false and self:RunMigration() then return end
   local core = self.core
-  self:Make(core, "scoring", "scoring")
-  local trackers = core.trackers
+  self:Make(core, "scoring", "High Scores")
+  local trackers = core.Trackers
   if trackers == nil then
     trackers = {}
-    core.trackers = trackers
+    core.Trackers = trackers
   end
   local damage = self:Make(trackers, "tracker", "Default Damage")
   if not rawget(damage, "overflow") then
@@ -109,39 +109,51 @@ end
 --- @param version number
 --- @return boolean
 function Addon:Migrate(version)
-  if version >= 1.3 then return false end
-  local trackers = self.core.trackers
-  if trackers == nil then
-    trackers = {}
-    self.core.trackers = trackers
-  end
-  for trackerName, tracker in pairs(self.core) do
-    if type(tracker) == "table" and tracker.type == "tracker" then
-      self.core[trackerName] = nil
-      trackers[trackerName] = tracker
-    end
-  end
-  if version >= 1.2 then return false end
-  local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth" }
-  for _, tracker in pairs(trackers) do
-    for _, field in ipairs(fieldsToMigrate) do
-      local old = tracker[field]
-      if type(old) == "string" then
-        tracker[field] = old:upper()
+  if version < 1.0 then return true end
+  local core = self.core
+  if version < 1.1 then
+    for trackerName, tracker in pairs(core--[[@as any]] .trackers) do
+      local oldGrow = tracker.grow
+      if oldGrow == "up" then
+        tracker.grow = "TOP"
+      elseif oldGrow == "down" then
+        tracker.grow = "BOTTOM"
       end
     end
   end
-  if version >= 1.1 then return false end
-  for trackerName, tracker in pairs(trackers) do
-    local oldGrow = tracker.grow
-    if oldGrow == "up" then
-      tracker.grow = "top"
-    elseif oldGrow == "down" then
-      tracker.grow = "bottom"
+  if version < 1.2 then
+    local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth" }
+    for _, tracker in pairs(core--[[@as any]] .trackers) do
+      for _, field in ipairs(fieldsToMigrate) do
+        local old = tracker[field]
+        if type(old) == "string" then
+          tracker[field] = old:upper()
+        end
+      end
     end
   end
-  if version >= 1.0 then return false end
-  return true
+  if version < 1.3 then
+    local trackers = self.core.Trackers
+    if trackers == nil then
+      trackers = {}
+      self.core.Trackers = trackers
+    end
+    for trackerName, tracker in pairs(self.core) do
+      if type(tracker) == "table" and tracker.type == "tracker" then
+        self.core[trackerName] = nil
+        trackers[trackerName] = tracker
+      end
+    end
+  end
+  if version < 1.4 then
+    self.core.Extras = self.core--[[@as any]] ._debug
+    self.core._debug = nil
+    self.core.Trackers = self.core--[[@as any]] .trackers
+    self.core.trackers = nil
+    self.core["High Scores"] = self.core--[[@as any]] .scoring
+    self.core.scoring = nil
+  end
+  return false
 end
 
 -------------------
@@ -153,7 +165,7 @@ end
 --- @return nil
 function Addon:AddTracker(info, name)
   assertType(info, type_table, name, type_string)
-  self:Make(self.core.trackers, "tracker", name)
+  self:Make(self.core.Trackers, "tracker", name)
   self:BuildTracker(name)
 end
 
@@ -162,9 +174,9 @@ end
 --- @return nil
 function Addon:RenameTracker(info, new)
   assertType(info, type_table, new, type_string)
-  local trackers = self.core.trackers
+  local trackers = self.core.Trackers
   if trackers[new] then return end
-  local old = info[2]
+  local old = info[1]
   trackers[new] = trackers[old]
   trackers[old] = nil
 
@@ -178,8 +190,8 @@ end
 --- @return nil
 function Addon:DeleteTracker(info)
   assertType(info, type_table)
-  local trackerName = info[2]
-  self.core.trackers[trackerName] = nil
+  local trackerName = info[1]
+  self.core.Trackers[trackerName] = nil
   self.settings.options.args.trackers[trackerName] = nil
 end
 
@@ -189,7 +201,7 @@ function Addon:DeleteMeter(info)
   assertType(info, type_table)
   local tracker, kind, deleter = unpack(info)
   local meter = deleter:sub(2)
-  self.core.trackers[tracker][kind][meter] = nil
+  self.core.Trackers[tracker][kind][meter] = nil
   local trackerSettings = self.settings.options.args.trackers[tracker].args[kind].args
   trackerSettings[meter] = nil
   trackerSettings[deleter] = nil
@@ -199,11 +211,11 @@ end
 --- @return nil
 function Addon:AddMeter(info, meter)
   assertType(info, type_table, meter, type_string)
-  self.core.trackers[info[2]].ignore = {}
-  local key = sublist(info, 2, -2)
+  self.core.Trackers[info[1]].ignore = {}
+  local key = subInfo(info, 1, -2)
   tinsert(key, meter)
   self:Set(key, colPack(getIconColor(GetSpellTexture(meter))))
-  self:BuildTracker(info[2])
+  self:BuildTracker(info[1])
 end
 
 ----------
@@ -225,7 +237,7 @@ end
 function Addon:Rebuild(info, r, g, b, a)
   if info then
     self:ConfSet(info, r, g, b, a)
-    self:BuildTrackerFrame(info[2])
+    self:BuildTrackerFrame(info[1])
   end
 end
 
@@ -233,7 +245,7 @@ end
 --- @return nil
 function Addon:BuildTracker(name)
   assertType(name, type_string)
-  local tracker = self.core.trackers[name]
+  local tracker = self.core.Trackers[name]
   tracker.ignore = tracker.ignore or {}
   self.settings:BuildTrackerSettings(name, tracker)
   self:BuildTrackerFrame(name, tracker)
@@ -243,7 +255,7 @@ end
 --- @param tracker? Tracker
 --- @return TrackerFrame
 function Addon:BuildTrackerFrame(name, tracker)
-  if not tracker then tracker = self.core.trackers[name] end
+  if not tracker then tracker = self.core.Trackers[name] end
   assertType(name, type_string, tracker, type_table)
   self:AutoDefault(tracker)
   local frame = frames[name]
@@ -381,8 +393,8 @@ function Addon:RemoveAlert(trackerName, button)
 end
 
 local sortAnchors = {
-  down = { "TOPLEFT", "BOTTOMLEFT", -1 },
-  up   = { "BOTTOMLEFT", "TOPLEFT", 1 }
+  BOTTOM = { "TOPLEFT", "BOTTOMLEFT", -1 },
+  TOP    = { "BOTTOMLEFT", "TOPLEFT", 1 }
 }
 
 --- @param frame TrackerFrame
@@ -428,7 +440,7 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
   self:Output("Building ", meter, " -> ", amount, " / ", crit, " / ", over)
   local kind = "spell"
   --- @type Tracker
-  local tracker = self.core.trackers[trackerName]
+  local tracker = self.core.Trackers[trackerName]
   local displayOver = tracker.over
   if displayOver ~= "include" and displayOver ~= "additional" and amount == 0 then
     return nil
@@ -463,7 +475,7 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
     alert.metername = metername
     alert.timed = timed
     alert.count = 0
-    if self.core.scoring.scoreIcon then
+    if self.core["High Scores"].scoreIcon then
       alert.record = HighScores:GetScore(meter)
     else
       alert.record = nil
@@ -523,7 +535,7 @@ function Addon:PLAYER_LOGIN()
   player.race = select(2, UnitRace("player"))
   player.class = select(2, UnitClass("player"))
   player.spec = GetSpecialization()
-  for trackerName, tracker in pairs(self.core.trackers) do
+  for trackerName, tracker in pairs(self.core.Trackers) do
     self:BuildTracker(trackerName)
   end
 end
@@ -552,7 +564,7 @@ end
 --- @return nil
 function Addon:Match(spellName, spellID, trackerName, seconds, destGUID, log)
   --- @type Tracker
-  local tracker = self.core.trackers[trackerName]
+  local tracker = self.core.Trackers[trackerName]
   if tracker.ignore[spellName] then return end
   spellID = select(7, GetSpellInfo(spellName)) or spellID
   local notFound = true
@@ -764,7 +776,7 @@ function Addon:ResolveLog()
   logKeys = {}
   logTotals = {}
 
-  local trackers = self.core.trackers
+  local trackers = self.core.Trackers
   for trackerName, tracker in pairs(trackers) do
     if tracker and tracker.enabled and lastTotals[tracker.trackerType] then
       local tracker_spell = tracker.spell
