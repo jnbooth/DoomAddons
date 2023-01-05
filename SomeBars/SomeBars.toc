@@ -1,0 +1,18 @@
+## Interface: 70300
+## Version: 1.0.0
+## Author: Doomcoder
+## X-Email: doomkaster@gmail.com
+## X-Copyright: Creative Commons Attribution-NonCommercial 3.0 Unported
+## X-Curse-Packaged-Version: 1.0.0
+## X-Curse-Project-Name: Some Bars
+## X-Curse-Project-ID: some-bars
+## X-Curse-Repository-ID: wow/some-bars/mainline
+
+## Title: Some Bars
+## Notes: Progress bars for spell/item cooldowns.
+## SavedVariables: SomeBarsDB
+
+Libs\LibStub\LibStub.lua
+embeds.xml
+Settings.lua
+SomeBars.lua

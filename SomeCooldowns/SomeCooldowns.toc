@@ -1,0 +1,18 @@
+## Interface: 80000
+## Version: 1.0.0
+## Author: Doomcoder
+## X-Email: doomkaster@gmail.com
+## X-Copyright: Copyright (c) 2016-2017 Doomcoder. All rights reserved.
+## X-Curse-Packaged-Version: 1.0.0
+## X-Curse-Project-Name: Some Cooldowns
+## X-Curse-Project-ID: some-cooldowns
+## X-Curse-Repository-ID: wow/some-cooldowns/mainline
+
+## Title: Some Cooldowns
+## Notes: Dynamic button displays for cooldowns.
+## SavedVariables: SomeCooldownsDB
+
+Libs\LibStub\LibStub.lua
+embeds.xml
+Settings.lua
+SomeCooldowns.lua
