@@ -243,8 +243,7 @@ function Addon:Sort(force)
 
   nilSort(add, core.sort == "long" and "-expires" or "expires")
 
-  makeGrid {
-    frame        = frame,
+  makeGrid(frame, {
     els          = add,
     parent       = UIParent,
     anchor       = core.anchor,
@@ -262,7 +261,7 @@ function Addon:Sort(force)
     background   = core.background,
     border       = core.border,
     edge         = core.edge
-  }
+  })
 
   if frame.msq then frame.msq:ReSkin() end
 end

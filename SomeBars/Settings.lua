@@ -27,37 +27,36 @@ defaults.options = opt("parent", {
     } }
   }
 })
+--- @type BarGroup
 defaults.group = {
-  grow = "right",
-  orientation = "horizontal",
-  spacing = 25,
-  iconPos = "after",
-  iconSpacing = -2,
-  iconSize = 22,
-  lock = true,
-  flexible = false,
   add = { barType = "spell" },
+  anchor = "TOP",
+  barBackgroundColor = { r = 0, g = 0, b = 0, a = 0.4 },
+  barBorderColor = { r = 0, g = 0, b = 0, a = 0 },
   dim1 = 1395,
   dim2 = 3,
-  anchor = "top",
+  flexible = false,
+  grow = "RIGHT",
+  iconPos = "after",
+  iconSize = 22,
+  iconSpacing = -2,
+  lock = true,
   offsetX = 0,
   offsetY = -50,
-  bg = { r = 0, g = 0, b = 0, a = 0.3 },
-  border = { r = 0, g = 0, b = 0, a = 0.4 }
+  orientation = "HORIZONTAL",
+  spacing = 25,
 }
+--- @type Bar
 defaults.bar = {
-  --image = "Interface\\Icons\\INV_Misc_QuestionMark",
-  display = "normal",
-  --color = conf:ConfGet(key:s(1):a("color")),
-  color = { r = 1, g = 1, b = 1, a = 1 },
+  barAlpha = 0.66,
+  combat = "show",
   dim1 = 150,
   dim2 = 3,
-  barAlpha = 0.66,
-  sparkAlpha = 1,
   iconAlpha = 1,
+  newColor = { r = 1, g = 1, b = 1, a = 1 },
+  noncombat = "auto",
   reverse = false,
-  combat = "show",
-  noncombat = "auto"
+  sparkAlpha = 1,
 }
 
 Settings.defaults = defaults
@@ -139,8 +138,8 @@ function Settings:BuildGroupSettings(groupName, group)
       { "offsetX" },
       { "offsetY" },
       { "space" },
-      { "bg", "aColor", "Background" },
-      { "border", "aColor" },
+      { "barBackgroundColor", "aColor", "Background" },
+      { "barBorderColor", "aColor", "Border" },
       { "delete", "execute", {
         func = "DeleteGroup"
       } },
@@ -160,33 +159,28 @@ function Settings:BuildGroupSettings(groupName, group)
     }
   })
   self.crawler:Set({ groupName }, opts)
-  self:BuildBarSettings(groupName, "Default", group.Default)
+  self:BuildBarSettings(groupName, nil, group.Default)
   for barName, bar in pairs(group.bars) do
     self:BuildBarSettings(groupName, barName, bar)
   end
 end
 
---- @param bar Bar
-function Settings:AliasString(bar)
-  local aliases = {}
-  for aliasName in pairs(bar.watch) do
-    tinsert(aliases, tostring(aliasName))
-  end
-  if next(aliases) then
-    return " (" .. tconcat(aliases, ", ") .. ")"
-  else return ""
-  end
-end
-
 --- @param groupName string
---- @param name string
+--- @param barName string | nil
 --- @param bar Bar
-function Settings:BuildBarSettings(groupName, name, bar)
-  bar.newColor = bar.color
-  local tableKey = { groupName, "args", "bars", "args", name }
-  local barSettings = opt(nil, "group", name, {
+function Settings:BuildBarSettings(groupName, barName, bar)
+  bar.newColor = barName and bar.watch[barName].color
+  --- @type CorePath
+  local tableKey
+  if barName == nil then
+    tableKey = { groupName, "args", "Default" }
+  else
+    tableKey = { groupName, "args", "bars", "args", barName }
+  end
+  local barSettings = opt(nil, "group", barName or "Default", {
+    set = "Rebuild",
     order = function() return bar.position end,
-    icon = function() return select(3, GetSpellInfo(name)) end,
+    icon = barName and function() return select(3, GetSpellInfo(barName)) end,
     args = {
       { "position", "range", {
         step = 1,
@@ -199,12 +193,6 @@ function Settings:BuildBarSettings(groupName, name, bar)
         set = "Watch"
       } },
       { "newColor", "aColor", "" },
-      { "space" },
-      { "color", {
-        name = function() return name .. self:AliasString(bar) end,
-        set = "UpdateBarColor",
-        width = "full"
-      } },
       { "space" },
       { "reverse", "toggle", "Reverse direction", {
         order = 100
@@ -273,17 +261,18 @@ function Settings:BuildBarSettings(groupName, name, bar)
       } }
     }
   })
-  local i = 10
-  for watch in pairs(bar.watch) do
-    if watch ~= name then
-      barSettings.args[watch .. "color"] = {
-        type = "color",
-        hasAlpha = true,
-        get = "ConfGetWatchColor",
-        set = "ConfSetWatchColor",
-        name = watch,
-        order = i
-      }
+  local i = 11
+  for watch in pairs(bar.watch or {}) do
+    local order = watch == barName and 10 or i
+    barSettings.args[watch .. "color"] = {
+      type = "color",
+      hasAlpha = true,
+      get = "ConfGetWatchColor",
+      set = "ConfSetWatchColor",
+      name = watch,
+      order = order
+    }
+    if watch ~= barName then
       barSettings.args[watch .. "delete"] = {
         type = "execute",
         name = "x",
@@ -293,18 +282,18 @@ function Settings:BuildBarSettings(groupName, name, bar)
           barSettings.args[watch .. "delete"] = nil
           info.handler:Unwatch(info, watch)
         end,
-        order = i + 1
+        order = order + 1
       }
-      barSettings.args[watch .. "space"] = {
-        type = "description",
-        name = "",
-        width = "full",
-        order = i + 2
-      }
-      i = i + 3
     end
+    barSettings.args[watch .. "space"] = {
+      type = "description",
+      name = "",
+      width = "full",
+      order = order + 2
+    }
+    i = i + 3
   end
-  if name == "Default" then
+  if barName == nil then
     barSettings.inline = true
     barSettings.order = 100
     barSettings.args.reset = {

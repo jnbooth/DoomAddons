@@ -31,13 +31,13 @@ defaults.global = {
   max = 0,
   color = { r = 0, g = 0, b = 0, a = 1 },
   recharge = true,
-  rowGrowth = "top",
-  columnGrowth = "right",
+  rowGrowth = "TOP",
+  columnGrowth = "RIGHT",
   iconSize = 38,
   spacing = 4,
   tooltip = true,
   tooltipOverride = false,
-  tooltipAnchor = "topright"
+  tooltipAnchor = "TOPRIGHT"
 }
 defaults.db = {
   profile = {
@@ -92,8 +92,8 @@ defaults.options = opt("parent", {
     { "rowGrowth", "select", "Grow rows", {
       width = "half",
       values = {
-        top = "Up",
-        bottom = "Down"
+        TOP = "Up",
+        BOTTOM = "Down"
       },
       hidden = function(info)
         local limit = tonumber(N.Handler:ConfGet({ "limit" }))

@@ -347,9 +347,10 @@ end
 
 D.setBgFromConf = setBgFromConf
 
+--- @param frame DoomFrame
 --- @param c FrameSettings
 --- @return nil
-local function makeGrid(c)
+local function makeGrid(frame, c)
   c.padding = c.padding or 0
   c.spacing = c.spacing or c.iconSpacing or 0
 
@@ -361,7 +362,7 @@ local function makeGrid(c)
     end
   end
 
-  local anchor, frame, grow, grow2, parent, x, y = c.anchor, c.frame, c.grow, c.grow2, c.parent, c.x, c.y
+  local anchor, grow, grow2, parent, x, y = c.anchor, c.grow, c.grow2, c.parent, c.x, c.y
   local els, limit, cMax, padding, size, spacing = c.els, c.limit, c.max, c.padding, c.size, c.spacing or c.iconSpacing
 
   local a1 = growAnchors[grow] or growAnchors.CENTER
@@ -370,7 +371,7 @@ local function makeGrid(c)
   local growComp = growAnchors[comp]
 
   frame:ClearAllPoints()
-  if parent and anchor then
+  if anchor then
     frame:SetPoint(comp, parent, anchor,
       --conf_x - (conf_size + conf_padding * 2) * growComp[3] / 2,
       --conf_y - (conf_size + conf_padding * 2) * growComp[4] / 2)

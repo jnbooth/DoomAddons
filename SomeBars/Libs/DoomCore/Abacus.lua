@@ -265,14 +265,6 @@ local function createProjectionFunction(projection)
   return function(el) return el[projection] end, reverse
 end
 
---- @generic T
---- @param a T
---- @param b T
---- @return boolean
-local function defaultSortFunction(a, b)
-  return a < b
-end
-
 --- @generic T, P
 --- @param val T[]
 --- @param projection string | fun(el: T): P
@@ -280,10 +272,11 @@ end
 --- @return nil
 local function nilSort(val, projection, sortFunc)
   local projectionFunction, reverse = createProjectionFunction(projection)
-  sortFunc = sortFunc or defaultSortFunction
-  sort(val, function(a, b)
-    if a ~= nil then a = projectionFunction(a) end
-    if b ~= nil then b = projectionFunction(b) end
+  local indices
+  sort(val, function(valA, valB)
+    if not sortFunc and valA == valB then return false end
+    local a = valA == nil and nil or projectionFunction(valA)
+    local b = valB == nil and nil or projectionFunction(valB)
     if a == nil and b == nil then
       return false
     end
@@ -293,7 +286,18 @@ local function nilSort(val, projection, sortFunc)
     if b == nil then
       return true
     end
-    return reverse ~= sortFunc(a, b)
+    if sortFunc then
+      return reverse ~= sortFunc(a, b)
+    end
+    if a < b then return not reverse end
+    if a > b then return reverse end
+    if not indices then
+      indices = {}
+      for i, v in ipairs(val) do
+        indices[v] = i
+      end
+    end
+    return reverse ~= (indices[valA] < indices[valB])
   end)
 end
 

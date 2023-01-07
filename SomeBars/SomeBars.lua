@@ -10,7 +10,7 @@ local D = LibStub("DoomCore-2.1")
 --- @field core SomeBarsCore
 --- @field settings SomeBarsSettings
 local Addon = D.Addon(shortName, "Some Bars", N)
-Addon.version = 0.8
+Addon.version = 1.0
 
 local CreateFrame, GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell, IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent = CreateFrame
     , GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell,
@@ -97,7 +97,7 @@ function Addon:OnLoad(registered)
     local default = group.Default
     self:AutoDefault(default)
     for barName, bar in pairs(group.bars) do
-      bar.newColor = bar.color
+      bar.newColor = bar.watch[barName].color
       setIndex(bar, default)
     end
     self:BuildGroup(groupName)
@@ -184,6 +184,19 @@ function Addon:Migrate(version)
       end
     end
   end
+  if version < 0.9 then
+    for _, group in pairs(core.Groups) do
+      group.barBackgroundColor = group--[[@as any]] .bg
+      group.barBorderColor = group--[[@as any]] .border
+    end
+  end
+  if version < 1.0 then
+    for _, group in pairs(core.Groups) do
+      for _, bar in pairs(group.bars) do
+        bar.color = nil
+      end
+    end
+  end
   return false
 end
 
@@ -219,6 +232,7 @@ function Addon:AddGroup(info, name)
     return
   end
   self:Make(group, "bar", "Default")
+  group.bars = group.bars or {}
   self:BuildGroup(name)
 end
 
@@ -285,7 +299,7 @@ function Addon:AddBar(info, name)
   end
   bar.watch = bar.watch or {}
   bar.watch[name] = {
-    color = bar.color
+    color = bar.newColor
   }
   bar.position = self:BarCount(groupName)
   self:BuildGroup(groupName)
@@ -306,6 +320,7 @@ end
 function Addon:Watch(info, val)
   assertType(info, type_table, val, type_number + type_string)
   local groupName = info[1]
+  local barName = info[3]
   --- @type Bar | nil
   local bar = self:GetParent(info)
   if not bar then
@@ -316,7 +331,7 @@ function Addon:Watch(info, val)
     color = bar.newColor,
     image = select(3, GetSpellInfo(val))
   }
-  bar.newColor = bar.color
+  bar.newColor = bar.watch[barName].color
   self:BuildGroup(groupName)
 end
 
@@ -333,7 +348,7 @@ end
 --- @param info ColorPath
 --- @return CorePath
 local function watchColorKey(info)
-  return tappend(subInfo(info, 1, -2), strsub(info[#info], 0, - #"color" - 1), "color")
+  return tappend(subInfo(info, 1, -2), "watch", strsub(info[#info], 0, - #"color" - 1), "color")
 end
 
 --- @param info ColorPath
@@ -580,7 +595,13 @@ function Addon:UpdateSlot(slot, gcd, combat)
     self:SetVisible(slot, false)
     return
   end
-  local color = activeData.color or activeBar.color
+  --- @type Color
+  local color
+  if activeData then
+    color = activeData.color
+  else
+    color = activeBar.watch[activeName].color
+  end
   slot.fg:SetColorTexture(color.r, color.g, color.b, activeBar.barAlpha)
   slot.fg:SetAllPoints(slot)
   for _, goal in pairs(slot.Goals) do goal:Hide() end
@@ -695,7 +716,8 @@ function Addon:BuildGroupFrame(name, group)
   frame.count = 0
   frame:ClearAllPoints()
 
-  local bg, border, iconSize, iconPos, orientation, spacing = group.bg, group.border or {}, group.iconSize, group.iconPos
+  local bg, border, iconSize, iconPos, orientation, spacing = group.barBackgroundColor, group.barBorderColor or {},
+      group.iconSize, group.iconPos
       ,
       group.orientation, group.spacing
 
@@ -725,15 +747,14 @@ function Addon:BuildGroupFrame(name, group)
     for watch in pairs(bar.watch) do
       tinsert(tracked, watch)
     end
-    tinsert(bars, barName)
+    tinsert(bars, bar)
   end
-  nilSort(bars, function(barName) return group.bars[barName].position end)
+  nilSort(bars, function(bar) return bar.position end)
 
   local barSlots = {}
   local slotI = 0
   local atPos = 0
-  for _, barName in pairs(bars) do
-    local bar = group.bars[barName]
+  for _, bar in pairs(bars) do
     local position = bar.position
     if position then
       if position > atPos then

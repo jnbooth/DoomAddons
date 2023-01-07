@@ -42,9 +42,8 @@ DoomCoreLocker = {}
 --- @field edge number | nil
 --- @field els Frame[] | nil
 --- @field font string | nil
---- @field fontColor Color
+--- @field fontColor Color | nil
 --- @field fontSize number | nil
---- @field frame DoomFrame
 --- @field grow AnchorPoint | nil
 --- @field grow2 AnchorPoint | nil
 --- @field iconSpacing number | nil
