@@ -43,7 +43,7 @@ end
 --------
 
 --- @param self BarGroupFrame
-function frame_update(self)
+local function frame_update(self)
   for _, slot in ipairs(self.slots) do
     local start = slot.start
     local spark = slot.Spark
