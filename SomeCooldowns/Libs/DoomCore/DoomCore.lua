@@ -201,14 +201,16 @@ local function Locker()
     end
   end
 
-  locker:SetScript("OnClick", function(self)
+  function locker:OnClick()
     for frameName, frame in pairs(self.frames) do
       if frame.conf then frame.conf.lock = true end
       if frame.tex then frame.tex:Hide() end
     end
     self.frames = {}
     self:Hide()
-  end)
+  end
+
+  locker:SetScript("OnClick", locker.OnClick)
   return locker
 end
 
@@ -277,34 +279,47 @@ end
 
 D.updateFrame = updateFrame
 
+--- @class DraggableFrame : Frame
+--- @field dragSettings FrameSettings?
+--- @field onReceiveDrag nil | fun(): nil
+
+--- @param frame DraggableFrame
+local function handleReceiveDrag(frame)
+  local orig, _, dest, x, y = frame:GetPoint(1)
+  local a = growAnchors[orig]
+  local dragSettings, onReceiveDrag = frame.dragSettings, frame.onReceiveDrag
+  if dragSettings then
+    dragSettings.anchor = dest:lower()
+    dragSettings.offsetX = floor(x * 10) / 10
+    dragSettings.offsetY = floor(y * 10) / 10
+  end
+  if onReceiveDrag then onReceiveDrag() end
+end
+
 --- @param frame Frame
 --- @param frameSettings? FrameSettings
 --- @param onReceiveDrag? fun(): nil
 --- @return nil
 local function draggable(frame, frameSettings, onReceiveDrag)
+  --- @cast frame DraggableFrame
   if frame:GetScript("OnReceiveDrag") then return end
+  frame.dragSettings = frameSettings
+  frame.onReceiveDrag = onReceiveDrag
   frame:RegisterForDrag("LeftButton")
   frame:SetScript("OnDragStart", frame.StartMoving)
   frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-  frame:SetScript("OnReceiveDrag", function()
-    local orig, _, dest, x, y = frame:GetPoint(1)
-    local a = growAnchors[orig]
-    if frameSettings then
-      frameSettings.anchor = dest:lower()
-      frameSettings.offsetX = floor(x * 10) / 10
-      frameSettings.offsetY = floor(y * 10) / 10
-    end
-    if onReceiveDrag then onReceiveDrag() end
-  end)
+  frame:SetScript("OnReceiveDrag", handleReceiveDrag)
 end
 
 D.draggable = draggable
+
+local FontMediaType = SharedMedia.MediaType.FONT
 
 --- @param text FontString
 --- @param conf FrameSettings
 --- @return nil
 local function setFont(text, conf)
-  local font = SharedMedia:Fetch(SharedMedia.MediaType.FONT, conf.font)
+  local font = SharedMedia:Fetch(FontMediaType, conf.font)
   if font == nil then return end
   text:SetFont(font, conf.fontSize)
   if conf.fontColor then text:SetTextColor(colUnpack(conf.fontColor)) end
@@ -748,7 +763,6 @@ end
 
 D.Configuration = Configuration
 
-
 -----------------
 -- Addon handler
 -----------------
@@ -798,7 +812,8 @@ end
 --- @param ... any
 --- @return nil
 function Handler:Output(...)
-  if self.core.Extras and self.core.Extras.print then print(self.name, " | ", tostrings(...)) end
+  local extras = self.core.Extras
+  if extras and extras.print then print(self.name, " | ", tostrings(...)) end
 end
 
 --- @return number
@@ -954,9 +969,10 @@ function Handler:ConfSetReload(info, r, g, b, a)
   ReloadUI()
 end
 
---- @param args { [string]: any }
---- @return table
+--- @param args { [string]: AnyAceOption }
+--- @return AceOptionGroup
 function Handler:DebugOptions(args)
+  --- @type AceOptionGroup
   local debug = {
     type = "group",
     name = "Extras",
@@ -1016,11 +1032,15 @@ function Handler:Register(libs, defaultProfile, defaults)
   end
   defaults = defaults or {}
 
-  lib.db = LibStub("AceDB-3.0"):New(self.shortName .. "DB", defaults, defaultProfile)
+  local db = LibStub("AceDB-3.0"):New(self.shortName .. "DB", defaults, defaultProfile)
+  lib.db = db
 
-  lib.registry = LibStub("AceConfigRegistry-3.0")
-  lib.settings = LibStub("AceConfigDialog-3.0")
-  lib.options = LibStub("AceDBOptions-3.0")
+  local libRegistry = LibStub("AceConfigRegistry-3.0")
+  lib.registry = libRegistry
+  local libSettings = LibStub("AceConfigDialog-3.0")
+  lib.settings = libSettings
+  local libOptions = LibStub("AceDBOptions-3.0")
+  lib.options = libOptions
   for libKey, libName in pairs(libs or {}) do
     if not lib[libKey] then
       lib[libKey] = LibStub(libName, true) or AceAddon:GetAddon(libName, true)
@@ -1030,21 +1050,20 @@ function Handler:Register(libs, defaultProfile, defaults)
   self:Reset(false)
 
   if settings then
-    lib.settings:AddToBlizOptions(name)
+    libSettings:AddToBlizOptions(name)
     local profileSettings = LibStub("AceDBOptions-3.0"):GetOptionsTable(lib.db)
-    lib.registry:RegisterOptionsTable(name .. " Profile", profileSettings)
-    lib.settings:AddToBlizOptions(name .. " Profile", "Profiles", name)
+    libRegistry:RegisterOptionsTable(name .. " Profile", profileSettings)
+    libSettings:AddToBlizOptions(name .. " Profile", "Profiles", name)
 
     if settings.debug then
       local debug = self:DebugOptions(settings.debug)
-      lib.registry:RegisterOptionsTable(name .. " Extras", debug)
-      lib.settings:AddToBlizOptions(name .. " Extras", "Extras", name)
+      libRegistry:RegisterOptionsTable(name .. " Extras", debug)
+      libSettings:AddToBlizOptions(name .. " Extras", "Extras", name)
     end
   end
 
   for _, callback in pairs(dbCallbacks) do
-    ---@diagnostic disable-next-line: undefined-field
-    lib.db.RegisterCallback(self, callback, "Reset")
+    db.RegisterCallback(self, callback, "Reset")
   end
 end
 
@@ -1055,13 +1074,14 @@ end
 function Handler:Draggable(frame, conf, funcName)
   if frame:GetScript("OnReceiveDrag") then return end
   funcName = funcName or "Rebuild"
+  local libRegistry = self.lib.registry
   local func = function()
     if type(funcName) == "function" then
       funcName()
     elseif type(self[funcName]) == "function" then
       self[funcName](self)
     end
-    self.lib.registry:NotifyChange(self.name)
+    libRegistry:NotifyChange(self.name)
   end
   draggable(frame, conf, func)
 end
@@ -1233,10 +1253,7 @@ optTs.scale = {
   isPercent = true
 }
 
-local checks = {}
-for _, check in pairs({ "disabled", "hidden", "confirm" }) do
-  checks[check] = true
-end
+local checks = { disabled = true, hidden = true, confirm = true }
 local function ensureCheck(k, v)
   if checks[k] and type(v) == "table" then
     return function(info)

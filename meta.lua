@@ -93,16 +93,16 @@ ArkInventory = {}
 function ArkInventory.CheckPlayerHasControl() end
 
 --- @class MasqueButton
---- @field Icon Texture | nil
---- @field Normal Texture | nil
---- @field Disabled Texture | nil
---- @field Pushed Texture | nil
---- @field Count Texture | nil
---- @field Duration Texture | nil
---- @field Border Texture | nil
---- @field Highlight Texture | nil
---- @field Cooldown Texture | nil
---- @field ChargeCooldown Texture | nil
+--- @field Icon Texture?
+--- @field Normal Texture?
+--- @field Disabled Texture?
+--- @field Pushed Texture?
+--- @field Count Texture?
+--- @field Duration Texture?
+--- @field Border Texture?
+--- @field Highlight Texture?
+--- @field Cooldown Texture?
+--- @field ChargeCooldown Texture?
 
 --- @class MasqueGroup
 --- @field AddButton fun(self: MasqueGroup, button: Button, config?: MasqueButton): nil
@@ -175,38 +175,38 @@ function ArkInventory.CheckPlayerHasControl() end
 --- @field order nil | number | methodname | fun(info: AceInfo): number Relative position of item [default=100]. 0=first, -1=last.
 --- @field disabled nil | boolean | methodname | fun(info: AceInfo): boolean Disabled but visible [default=false].
 --- @field hidden nil | boolean | methodname | fun(info: AceInfo): boolean Hidden (but usable if you can get to it, i.e. via commandline) [default=false].
---- @field guiHidden nil | boolean Hide this from graphical UIs (dialog, dropdown) [default=false].
---- @field dialogHidden nil | boolean Hide this from dialog UIs [default=false].
---- @field dropdownHidden nil | boolean Hide this from dropdown UIs [default=false].
---- @field cmdHidden nil | boolean Hide this from commandline [default=false].
+--- @field guiHidden boolean? Hide this from graphical UIs (dialog, dropdown) [default=false].
+--- @field dialogHidden boolean? Hide this from dialog UIs [default=false].
+--- @field dropdownHidden boolean? Hide this from dropdown UIs [default=false].
+--- @field cmdHidden boolean? Hide this from commandline [default=false].
 --- @field icon nil | number | string | fun(info: AceInfo): number | string Path to icon texture.
 --- @field iconCoords nil | TexCoords | methodname | fun(info: AceInfo): TexCoords Arguments to pass to SetTexCoord.
---- @field handler nil | { [methodname]: function } Object on which getter/setter functions are called if they are declared as strings rather than function references.
---- @field width nil | AceOptionWidth In a GUI provide a hint for how wide this option needs to be. Optional support in implementations.
+--- @field handler { [methodname]: function }? Object on which getter/setter functions are called if they are declared as strings rather than function references.
+--- @field width AceOptionWidth? In a GUI provide a hint for how wide this option needs to be. Optional support in implementations.
 
 --- @class AceOptionExecute: AceOption A button that runs a function.
 --- @field type "execute"
 --- @field func methodname | fun(info: AceInfo): nil Function to execute.
 --- @field image nil | number | string | fun(info: AceInfo): nil | number | string, nil | number, nil | number Path to image texture. If set, displayed by the option in place of a button. If a function, can optionally return imageWidth and imageHeight as 2nd and 3rd return values.
 --- @field imageCoords nil | TexCoords | methodname | fun(info: AceInfo): TexCoords Arguments to pass to SetTexCoord.
---- @field imageWidth nil | number Width of the displayed image.
---- @field imageHeight nil | number Width of the displayed image.
+--- @field imageWidth number? Width of the displayed image.
+--- @field imageHeight number? Width of the displayed image.
 
 ---@class AceOptionInput: AceOption A simple text input.
 --- @field type "input"
 --- @field get nil | methodname | fun(info: AceInfo): string Getter function.
 --- @field set nil | methodname | fun(info: AceInfo, state: string): nil Setter function.
 --- @field multiline nil | boolean | integer If true, will be shown as a multiline editbox. Integer = # of lines in editbox.
---- @field pattern nil | string Optional validation pattern. (Use the validation field for more advanced checks!)
---- @field usage nil | string Usage string. Displayed if pattern mismatches and in console help messages.
---- @field dialogControl nil | string Custom GUI control.
+--- @field pattern string? Optional validation pattern. (Use the validation field for more advanced checks!)
+--- @field usage string? Usage string. Displayed if pattern mismatches and in console help messages.
+--- @field dialogControl string? Custom GUI control.
 
 --- @class AceOptionToggle: AceOption A simple checkbox.
 --- @field type "toggle"
 --- @field get nil | methodname | fun(info: AceInfo): boolean | nil Getter function.
 --- @field set nil | methodname | fun(info: AceInfo, state: boolean | nil): nil Setter function.
---- @field descStyle nil | AceOptionDescStyle
---- @field tristate nil | boolean Make the toggle a tri-state checkbox [default=false]. Values are cycled through unchecked (false), checked (true), greyed (nil) - in that order.
+--- @field descStyle AceOptionDescStyle?
+--- @field tristate boolean? Make the toggle a tri-state checkbox [default=false]. Values are cycled through unchecked (false), checked (true), greyed (nil) - in that order.
 --- @field image nil | number | string | fun(info: AceInfo): nil | number | string, nil | number, nil | number Path to image texture. If set, displayed by the option.
 --- @field imageCoords nil | TexCoords | methodname | fun(info: AceInfo): TexCoords Arguments to pass to SetTexCoord.
 
@@ -214,13 +214,13 @@ function ArkInventory.CheckPlayerHasControl() end
 --- @field type "range"
 --- @field get nil | methodname | fun(info: AceInfo): number Getter function.
 --- @field set nil | methodname | fun(info: AceInfo, state: number): nil Setter function.
---- @field min nil | number Minimum value.
---- @field max nil | number Maximum value.
---- @field softMin nil | number "Soft" minimum value. Used by the UI for a convenient limit while allowing manual input of values up to min.
---- @field softMax nil | number "Soft" maximum value. Used by the UI for a convenient limit while allowing manual input of values up to max.
---- @field step nil | number Step value: "smaller than this will break the code". Requires valid values for min and max.
---- @field bigStep nil | number A more generally-useful step size. Support in UIs is optional.
---- @field isPercent nil | boolean Represent e.g. 1.0 as "100%", etc. [default=false].
+--- @field min number? Minimum value.
+--- @field max number? Maximum value.
+--- @field softMin number? "Soft" minimum value. Used by the UI for a convenient limit while allowing manual input of values up to min.
+--- @field softMax number? "Soft" maximum value. Used by the UI for a convenient limit while allowing manual input of values up to max.
+--- @field step number? Step value: "smaller than this will break the code". Requires valid values for min and max.
+--- @field bigStep number? A more generally-useful step size. Support in UIs is optional.
+--- @field isPercent boolean? Represent e.g. 1.0 as "100%", etc. [default=false].
 
 --- @class AceOptionSelect: AceOption Only one of the values can be selected. In a dropdown menu implementation it would likely be a radio group, in a dialog likely a dropdown combobox.
 --- @field type "select"
@@ -228,17 +228,17 @@ function ArkInventory.CheckPlayerHasControl() end
 --- @field set nil | methodname | fun(info: AceInfo, val: any): nil Setter function.
 --- @field values { [string]: any } | fun(info: AceInfo): { [string]: any } Key value pair table to choose from. Key is the value passed to "set", value is the string displayed.
 --- @field sorting nil | string[] | fun(info: AceInfo): nil | string[] Optional sorted array with the keys of the values table as values to sort the options.
---- @field style nil | AceOptionSelectStyle
---- @field dialogControl nil | string Custom GUI control. Cannot be used if style = "radio".
+--- @field style AceOptionSelectStyle?
+--- @field dialogControl string? Custom GUI control. Cannot be used if style = "radio".
 
 --- @class AceOptionMultiSelect: AceOption Multiple "toggle" elements condensed into a group of checkboxes, or something else that makes sense in the interface.
 --- @field type "multiselect"
 --- @field get nil | methodname | fun(info: AceInfo, key: string): any Getter function.
 --- @field set nil | methodname | fun(info: AceInfo, key: string, state: any): nil Setter function.
 --- @field values { [string]: any } | fun(info: AceInfo): { [string]: any } Key value pair table to choose from. Key is the value passed to "set", value is the string displayed.
---- @field tristate nil | boolean Make the checkmarks tri-state [default=false]. Values are cycled through unchecked (false), checked (true), greyed (nil) - in that order.
---- @field style nil | AceOptionSelectStyle
---- @field dialogControl nil | string Custom GUI control.
+--- @field tristate boolean? Make the checkmarks tri-state [default=false]. Values are cycled through unchecked (false), checked (true), greyed (nil) - in that order.
+--- @field style AceOptionSelectStyle?
+--- @field dialogControl string? Custom GUI control.
 
 --- @class AceOptionColor: AceOption Opens a color picker form.
 --- @field type "color"
@@ -256,22 +256,22 @@ function ArkInventory.CheckPlayerHasControl() end
 
 --- @class AceOptionDescription: AceOption A paragraph of text to appear next to other options. Name is the text to display.
 --- @field type "description"
---- @field fontSize nil | AceOptionFontSize Size of the text [default="small"].
+--- @field fontSize AceOptionFontSize? Size of the text [default="small"].
 --- @field image nil | number | string | fun(info: AceInfo): nil | number | string, nil | number, nil | number Path to image texture. If set, displayed in front of the text. If a function, can optionally return imageWidth and imageHeight as 2nd and 3rd return values.
 --- @field imageCoords nil | TexCoords | methodname | fun(info: AceInfo): TexCoords Arguments to pass to SetTexCoord.
---- @field imageWidth nil | number Width of the displayed image.
---- @field imageHeight nil | number Width of the displayed image.
+--- @field imageWidth number? Width of the displayed image.
+--- @field imageHeight number? Width of the displayed image.
 
 --- @class AceOptionGroup: AceOption
 --- @field type "group"
 --- @field args { [string]: AnyAceOption }
 --- @field plugins nil | { [string]: { [string]: AnyAceOption } } Allows modules and libraries to easily add more content to an addon's options table.
---- @field childGroups nil | AceOptionChildGroups Decides how children groups are displayed [default="tree"].
---- @field inline nil | boolean Show as a bordered box in a dialog UI, or at the parent's level with a separate heading in commandline and dropdown UIs.
---- @field cmdInline nil | boolean Like inline, but only obeyed by command line.
---- @field guiInline nil | boolean Like inline, but only obeyed by graphical UI.
---- @field dropdownInline nil | boolean Like inline, but only obeyed by dropdown UI.
---- @field dialogInline nil | boolean Like inline, but only obeyed by dialog UI.
+--- @field childGroups AceOptionChildGroups? Decides how children groups are displayed [default="tree"].
+--- @field inline boolean? Show as a bordered box in a dialog UI, or at the parent's level with a separate heading in commandline and dropdown UIs.
+--- @field cmdInline boolean? Like inline, but only obeyed by command line.
+--- @field guiInline boolean? Like inline, but only obeyed by graphical UI.
+--- @field dropdownInline boolean? Like inline, but only obeyed by dropdown UI.
+--- @field dialogInline boolean? Like inline, but only obeyed by dialog UI.
 
 --- @alias AnyAceOption
 ---| AceOptionExecute

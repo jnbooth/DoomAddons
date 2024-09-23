@@ -30,6 +30,12 @@ function BarGroupFrame:Update()
   end
 end
 
+--- @param bar Bar
+--- @return number
+local function sortBars(bar)
+  return bar.position
+end
+
 --- @param group BarGroup
 function BarGroupFrame:Build(group)
   self.conf = group
@@ -61,7 +67,7 @@ function BarGroupFrame:Build(group)
   for _, bar in pairs(group.bars) do
     tinsert(bars, bar)
   end
-  nilSort(bars, function(bar) return bar.position end)
+  nilSort(bars, sortBars)
 
   --- @type Bar[][]
   local barSlots = {}
@@ -198,9 +204,10 @@ local BarGroupFrameConstructor = { __index = BarGroupFrame }
 function BarGroupFrameConstructor:Create(name, parent)
   local frame = CreateFrame("Frame", name, parent) --[[@as BarGroupFrame]]
   frame:SetScript("OnUpdate", BarGroupFrame.Update)
-  frame.tex = frame:CreateTexture(frame:GetName() .. ".tex", "BORDER")
-  frame.tex:SetAllPoints(frame)
-  frame.tex:SetColorTexture(0, 1, 0, 0.5)
+  local tex = frame:CreateTexture(frame:GetName() .. ".tex", "BORDER")
+  frame.tex = tex
+  tex:SetAllPoints(frame)
+  tex:SetColorTexture(0, 1, 0, 0.5)
   frame.slots = {}
   setmetatable(frame, self)
   return frame

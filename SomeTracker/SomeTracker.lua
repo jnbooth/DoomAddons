@@ -325,17 +325,19 @@ function Addon:BuildTrackerFrame(name, tracker)
     local frameName = self.shortName .. name
     frame = CreateFrame("Frame", frameName, UIParent, "BackdropTemplate") --[[@as TrackerFrame]]
     frame.conf = tracker
-    frame.tex = frame:CreateTexture(frame:GetName() .. ".tex", "BACKGROUND")
-    frame.tex:SetAllPoints(frame)
-    frame.tex:SetColorTexture(0, 1, 0, 0.5)
+    local tex = frame:CreateTexture(frame:GetName() .. ".tex", "BACKGROUND")
+    frame.tex = tex
+    tex:SetAllPoints(frame)
+    tex:SetColorTexture(0, 1, 0, 0.5)
     local pool = CreateObjectPool(buttonPoolCreate, buttonPoolRelease)
     pool.frame = frame
     pool.name = frameName
     pool.size = 0
     frame.pool = pool
     frames[name] = frame
-    if self.lib.masque then
-      frame.msq = self.lib.masque:Group(self.name, name)
+    local masque = self.lib.masque
+    if masque then
+      frame.msq = masque:Group(self.name, name)
     end
   end
   self:Draggable(frame, tracker)
@@ -420,7 +422,8 @@ function Addon:Sort(frame)
     visible[i]:SetPoint(anchor1, visible[i - 1], anchor2, 0, dir * spacing)
   end
 
-  if frame.msq then frame.msq:ReSkin() end
+  local msq = frame.msq
+  if msq then msq:ReSkin() end
 end
 
 --- @param trackerName string
@@ -547,6 +550,23 @@ function Addon:UpdateLog(logged, amount, over, crit, timed)
   logged.timed = logged.timed or timed
 end
 
+--- @param checkRelated boolean
+--- @param colors { [string]: Color }
+--- @param spellName string
+--- @param spellID number
+--- @return string | nil, Color | nil
+local function matchSpell(checkRelated, colors, spellName, spellID)
+  local desc = checkRelated
+      and (not IsSpellKnown(spellID) or IsSpellPassive(spellID))
+      and GetSpellDescription(spellID)
+  for meter, color in pairs(colors) do
+    if meter == spellName or (desc and desc:find(meter, 1, true)) then
+      return meter, color
+    end
+  end
+  return nil
+end
+
 --- @param spellName string
 --- @param spellID number
 --- @param trackerName string
@@ -559,80 +579,75 @@ function Addon:Match(spellName, spellID, trackerName, seconds, destGUID, log)
   local tracker = self.core.Trackers[trackerName]
   if tracker.ignore[spellName] then return end
   spellID = GetSpellID(spellName) or spellID
-  local notFound = true
-  local desc = tracker.related and (not IsSpellKnown(spellID) or IsSpellPassive(spellID)) and
-      GetSpellDescription(spellID)
   local tracker_spell = tracker.spell
   if not tracker_spell then return end
-  for meter, color in pairs(tracker_spell) do
-    if meter == spellName or (desc and desc:find(meter, 1, true)) then
-      notFound = false
-      if isEmpty(color) then
-        local tex = GetSpellTexture(meter) or GetSpellTexture(spellID)
-        if tex then
-          color = colPack(getIconColor(tex))
-          tracker_spell[meter] = color
-        end
-      end
-      local missDisplay = tracker.misses
-      local finalSuff = tostring(seconds)
-      local suff = ""
-      local spell, aura, recent
-      spell = unique:Get({ "spell", meter })
-      --if destGUID then aura = unique:Get({ "aura", meter, destGUID }) end
-      if destGUID then aura = unique:Get({ "aura", meter }) end
-      recent = unique:Get({ "recent", meter })
-      self:Output(meter, " - ", aura, "/ ", spell, " / ", recent and recent[2])
-      if aura then
-        suff = suff .. aura
-        finalSuff = ""
-      elseif spell then
-        suff = suff .. spell
-        finalSuff = ""
-      elseif recent and seconds - recent[2] < 2 then
-        suff = suff .. recent[1]
-        finalSuff = ""
-      elseif recent then
-        recent = { seconds }
-      end
-      if not recent then recent = { seconds } end
-      recent[2] = seconds
+  local meter, color = matchSpell(tracker.related, tracker_spell, spellName, spellID)
+  if not meter then
+    tracker.ignore[spellName] = true
+    return
+  end
+  --- @cast color Color
+  if isEmpty(color) then
+    local tex = GetSpellTexture(meter) or GetSpellTexture(spellID)
+    if tex then
+      color = colPack(getIconColor(tex))
+      tracker_spell[meter] = color
+    end
+  end
+  local missDisplay = tracker.misses
+  local finalSuff = tostring(seconds)
+  local suff = ""
+  local spell, aura, recent
+  spell = unique:Get({ "spell", meter })
+  --if destGUID then aura = unique:Get({ "aura", meter, destGUID }) end
+  if destGUID then aura = unique:Get({ "aura", meter }) end
+  recent = unique:Get({ "recent", meter })
+  self:Output(meter, " - ", aura, "/ ", spell, " / ", recent and recent[2])
+  if aura then
+    suff = suff .. aura
+    finalSuff = ""
+  elseif spell then
+    suff = suff .. spell
+    finalSuff = ""
+  elseif recent and seconds - recent[2] < 2 then
+    suff = suff .. recent[1]
+    finalSuff = ""
+  elseif recent then
+    recent = { seconds }
+  end
+  if not recent then recent = { seconds } end
+  recent[2] = seconds
 
-      unique:Set({ "recent", meter }, recent)
-      local display = "TODO"
-      if (missDisplay == "all" or (missDisplay == "total" and (not log.amount or log.amount == 0) and not log.partial))
-          and log.miss then
-        for missType, missAmount in pairs(log.miss) do
-          if not tracker.missType or tracker.missType[missType] then
-            self:BuildAlert(trackerName, meter, meter, color, spellID,
-              {
-                crit = false,
-                displayCrit = false,
-                over = 0,
-                cat = missType,
-                amount = missAmount,
-                timed = log.timed
-              })
-          end
-        end
-      end
-      if (log.amount or 0) + (log.over or 0) > 0 then
-        local umeter = meter
-        if display ~= "aggregate" then
-          umeter = umeter .. suff .. finalSuff
-          finalSuff = ""
-        end
-        if display == "individual" then
-          umeter = umeter .. finalSuff .. unique:Incr({ "timed", log.timed })
-          finalSuff = ""
-        end
-
-        self:BuildAlert(trackerName, meter, umeter, color, spellID, log)
+  unique:Set({ "recent", meter }, recent)
+  local display = "TODO"
+  local miss = log.miss
+  if miss and (missDisplay == "all" or (missDisplay == "total" and not log.amount and not log.partial)) then
+    for missType, missAmount in pairs(miss) do
+      if not tracker.missType or tracker.missType[missType] then
+        self:BuildAlert(trackerName, meter, meter, color, spellID,
+          {
+            crit = false,
+            displayCrit = false,
+            over = 0,
+            cat = missType,
+            amount = missAmount,
+            timed = log.timed
+          })
       end
     end
   end
-  if notFound then
-    tracker.ignore[spellName] = true
+  if (log.amount or 0) + (log.over or 0) > 0 then
+    local umeter = meter
+    if display ~= "aggregate" then
+      umeter = umeter .. suff .. finalSuff
+      finalSuff = ""
+    end
+    if display == "individual" then
+      umeter = umeter .. finalSuff .. unique:Incr({ "timed", log.timed })
+      finalSuff = ""
+    end
+
+    self:BuildAlert(trackerName, meter, umeter, color, spellID, log)
   end
 end
 

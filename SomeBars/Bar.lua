@@ -97,7 +97,7 @@ local BarConstructor = { __index = Bar }
 --- @return Bar
 function BarConstructor:New(barType, id, position)
   if barType == "item" then
-    local link = select(2, C_Item.GetItemInfo(id))
+    local link = select(2, GetItemInfo(id))
     id = link and GetItemInfoFromHyperlink(link) or id
   else
     id = GetSpellID(id)

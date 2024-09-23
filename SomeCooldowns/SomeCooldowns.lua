@@ -10,8 +10,8 @@ local A = LibStub:GetLibrary("Abacus-2.0")
 local D = LibStub:GetLibrary("DoomCore-2.1")
 
 local LCG = LibStub("LibCustomGlow-1.0")
-ActionButton_ShowOverlayGlow = LCG.ButtonGlow_Start
-ActionButton_HideOverlayGlow = LCG.ButtonGlow_Stop
+local ActionButton_ShowOverlayGlow = LCG.ButtonGlow_Start
+local ActionButton_HideOverlayGlow = LCG.ButtonGlow_Stop
 
 
 --- @class CooldownInfo
@@ -64,10 +64,11 @@ function Addon:OnInitialize()
   frame = CreateFrame("Frame", shortName, UIParent, "BackdropTemplate") --[[@as CooldownsFrame]]
   frame:SetFrameStrata("LOW")
   frame.conf = self.core
-  frame.tex = frame:CreateTexture(frame:GetName() .. ".tex")
-  frame.tex:SetAllPoints(frame)
-  frame.tex:SetColorTexture(0, 1, 0, 0.5)
-  frame.tex:Hide()
+  local tex = frame:CreateTexture(frame:GetName() .. ".tex")
+  frame.tex = tex
+  tex:SetAllPoints(frame)
+  tex:SetColorTexture(0, 1, 0, 0.5)
+  tex:Hide()
 
   self:Register({
     media = "LibSharedMedia-3.0",
@@ -87,22 +88,24 @@ end
 --- @return nil
 function Addon:OnLoad(registered)
   if registered == false and self:RunMigration() then return end
-  if self.lib.masque and not frame.msq then
-    frame.msq = self.lib.masque:Group(self.name)
+  local masque = self.lib.masque
+  if masque and not frame.msq then
+    frame.msq = masque:Group(self.name)
   end
   frame:SetScript("OnReceiveDrag", nil)
-  self:Draggable(frame, self.core)
+  local core = self.core
+  self:Draggable(frame, core)
 
-  self.core.group = self.core.group or {}
+  core.group = core.group or {}
   local settings = self.settings
-  for cooldown, data in pairs(self.core.group) do
+  for cooldown, data in pairs(core.group) do
     local cooldownType = data.type
     if cooldownType == "blacklist" or cooldownType == "whitelist" then
       settings:Add(cooldownType, cooldown)
     end
   end
   self:SetFilter()
-  updateFrame(frame, self.core)
+  updateFrame(frame, core)
 end
 
 --- @return nil
@@ -112,9 +115,10 @@ end
 
 --- @return nil
 function Addon:GET_ITEM_INFO_RECEIVED()
+  local crawler = self.settings.crawler
   for valName, val in pairs(self.core.group or {}) do
     if type(valName) == "number" and val.type then
-      local entry = self.settings.crawler:Get({ val.type, "args", tostring(valName) })
+      local entry = crawler:Get({ val.type, "args", tostring(valName) })
       if not entry and GetItemInfo(valName) then
         self:Add({ val.type }, valName)
       end
@@ -159,14 +163,11 @@ function Addon:SetFilter(info, val)
       self.cooldowns = { item = {}, spell = {} }
     end
   end
+  local itemCooldowns = self.cooldowns.item
+  local spellCooldowns = self.cooldowns.spell
   for cooldown, data in pairs(self.core.group) do
     if data.type == "blacklist" then
-      local cooldowns
-      if type(cooldown) == "number" then
-        cooldowns = self.cooldowns.item
-      else
-        cooldowns = self.cooldowns.spell
-      end
+      local cooldowns = type(cooldown) == "number" and itemCooldowns or spellCooldowns
       cooldowns[cooldown] = {}
       update = true
     end
@@ -179,8 +180,9 @@ end
 --- @param val boolean
 function Addon:SetText(info, val)
   self:ConfSet(info, val)
+  local notVal = not val
   for _, v in pairs({ frame:GetChildren() }) do
-    v.cooldown:SetHideCountdownNumbers(not val)
+    v.cooldown:SetHideCountdownNumbers(notVal)
   end
 end
 
@@ -252,7 +254,6 @@ function Addon:Sort(force)
 
   for _, button in pairs(children) do
     if button.active then
-      local start, duration
       local type = button:GetAttribute("type")
       if type then
         local subject = button:GetAttribute(type)
@@ -394,7 +395,8 @@ function Addon:Update(hard)
     end
     self.cooldowns = { spell = {}, item = {} }
   end
-  for cooldown, data in pairs(self.core.group) do
+  local core = self.core
+  for cooldown, data in pairs(core.group) do
     if data.type == "whitelist" then
       if type(cooldown) == "number" then
         local fromCooldown = self:OnItemCooldown(cooldown)
@@ -413,7 +415,7 @@ function Addon:Update(hard)
     end
   end
 
-  if self.core.displaySpells then
+  if core.displaySpells then
     local index = 1
     while true do
       local _, id = GetSpellBookItemInfo(index, 0)
@@ -427,7 +429,7 @@ function Addon:Update(hard)
     end
   end
 
-  if self.core.displayItems then
+  if core.displayItems then
     for slot = 1, 19 do
       local item = GetInventoryItemID("player", slot)
       local fromCooldown = self:OnItemCooldown(item)
@@ -448,7 +450,7 @@ function Addon:Update(hard)
     end
   end
 
-  if self.core.displayToys then
+  if core.displayToys then
     for i = 1, GetNumToys() do
       local toy = GetToyFromIndex(i)
       if PlayerHasToy(toy) then
@@ -467,8 +469,8 @@ end
 -- Frames
 ----------
 
---- @overload fun(self: self, info: CorePath, r: number, g: number, b: number, a?: number): nil
---- @overload fun(self: self, info: CorePath, val: any): nil
+--- @overload fun(self: self, info: CooldownsCorePath, r: number, g: number, b: number, a?: number): nil
+--- @overload fun(self: self, info: CooldownsCorePath, val: any): nil
 function Addon:Rebuild(info, r, g, b, a)
   if info then self:ConfSet(info, r, g, b, a) end
   local size = self.core.iconSize
@@ -534,6 +536,15 @@ function Addon:CancelButton(button)
 end
 
 --- @param button CooldownButton
+local function cancelButton(button)
+  Addon:CancelButton(button)
+end
+
+local function onHideCooldowns()
+  Addon:Sort()
+end
+
+--- @param button CooldownButton
 --- @return nil
 function Addon:InitButton(button)
   button:Hide()
@@ -546,15 +557,16 @@ function Addon:InitButton(button)
       child.ants:Hide()
     end
   end
+  local core = self.core
   button:SetAttribute("unit", "player")
-  button.cooldownFrame = _G[button:GetName() .. "Cooldown"]
-  button.cooldownFrame:SetEdgeTexture("Interface\\Cooldown\\edge-LoC")
-  button.cooldownFrame:SetScript("OnHide", function() self:Sort() end)
-  button.cooldown:SetSwipeColor(colUnpack(self.core.color))
-  button.cooldown:SetHideCountdownNumbers(not self.core.text)
+  local cooldownFrame = _G[button:GetName() .. "Cooldown"]
+  button.cooldownFrame = cooldownFrame
+  cooldownFrame:SetEdgeTexture("Interface\\Cooldown\\edge-LoC")
+  cooldownFrame:SetScript("OnHide", onHideCooldowns)
+  button.cooldown:SetSwipeColor(colUnpack(core.color))
+  button.cooldown:SetHideCountdownNumbers(core.text)
   button:Disable()
-  tooltip(button, self.core.tooltip, self.core.tooltipOverride and self.core.tooltipAnchor or nil,
-    function(button) Addon:CancelButton(button) end)
+  tooltip(button, core.tooltip, core.tooltipOverride and core.tooltipAnchor or nil, cancelButton)
 end
 
 --- @param buttonType "item" | "spell"

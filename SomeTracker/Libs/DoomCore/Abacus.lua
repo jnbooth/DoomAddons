@@ -20,6 +20,7 @@ local _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, Hide
     , select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack
 local C_Spell, C_Item = C_Spell, C_Item
 local GetSpellID = C_Spell.GetSpellIDForSpellIdentifier
+local GetItemInfo = C_Item.GetItemInfo
 
 --- Searches for an element within a table and returns the key/value pair if found.
 --- @generic K, V
@@ -208,29 +209,40 @@ A.assertNotNil = assertNotNil
 
 --- @enum
 local TypeCode = {
-  Nil      = 1,
-  Number   = 2,
-  String   = 4,
-  Boolean  = 8,
-  Table    = 16,
-  Function = 32,
-  Thread   = 64,
-  Userdata = 128,
+  Nil           = 1,
+  Number        = 2,
+  String        = 4,
+  Boolean       = 8,
+  Table         = 16,
+  Function      = 32,
+  Thread        = 64,
+  Userdata      = 128,
+  LightUserdata = 256,
 }
 A.TypeCode = TypeCode
+local TypeCode_Nil = TypeCode.Nil
+local TypeCode_Number = TypeCode.Number
+local TypeCode_String = TypeCode.String
+local TypeCode_Boolean = TypeCode.Boolean
+local TypeCode_Table = TypeCode.Table
+local TypeCode_Function = TypeCode.Function
+local TypeCode_Thread = TypeCode.Thread
+local TypeCode_Userdata = TypeCode.Userdata
+local TypeCode_LightUserdata = TypeCode.LightUserdata
 
 --- @param valType type
 --- @param typeCode number
 --- @return boolean
 local function isType(valType, typeCode)
-  return (band(typeCode, TypeCode.Nil) ~= 0 and valType == "nil")
-      or (band(typeCode, TypeCode.Number) ~= 0 and valType == "number")
-      or (band(typeCode, TypeCode.String) ~= 0 and valType == "string")
-      or (band(typeCode, TypeCode.Boolean) ~= 0 and valType == "boolean")
-      or (band(typeCode, TypeCode.Table) ~= 0 and valType == "table")
-      or (band(typeCode, TypeCode.Function) ~= 0 and valType == "function")
-      or (band(typeCode, TypeCode.Thread) ~= 0 and valType == "thread")
-      or (band(typeCode, TypeCode.Userdata) ~= 0 and valType == "userdata")
+  return (band(typeCode, TypeCode_Nil) and valType == "nil")
+      or (band(typeCode, TypeCode_Number) and valType == "number")
+      or (band(typeCode, TypeCode_String) and valType == "string")
+      or (band(typeCode, TypeCode_Boolean) and valType == "boolean")
+      or (band(typeCode, TypeCode_Table) and valType == "table")
+      or (band(typeCode, TypeCode_Function) and valType == "function")
+      or (band(typeCode, TypeCode_Thread) and valType == "thread")
+      or (band(typeCode, TypeCode_Userdata) and valType == "userdata")
+      or (band(typeCode, TypeCode_LightUserdata) and valType == "lightuserdata")
 end
 
 --- Tests the type of arguments in pairs. Odd-numbered arguments are strings
@@ -258,6 +270,13 @@ end
 
 A.assertType = assertType
 
+--- @generic T
+--- @param arg T
+--- @return T
+local function identity(arg)
+  return arg
+end
+
 --- @generic T, P
 --- @param projection string | fun(el: T): P
 --- @return (fun(el: T): P), boolean
@@ -271,7 +290,7 @@ local function createProjectionFunction(projection)
     projection = projection:sub(2)
   end
   if projection == "" then
-    return function(el) return el end, reverse
+    return identity, reverse
   end
   return function(el) return el[projection] end, reverse
 end
@@ -576,7 +595,7 @@ A.colorify = colorify
 --- @param val string | number
 --- @return number | nil
 local function getItemID(val)
-  local itemString = select(2, C_Item.GetItemInfo(val))
+  local itemString = select(2, GetItemInfo(val))
   if type(itemString) ~= "string" then
     return nil
   end
@@ -612,42 +631,60 @@ end
 
 A.fitToText = fitToText
 
+--- @class TooltipButton : Button
+--- @field tooltipAnchorOwner string
+--- @field onTooltipHide? fun(self: self): nil
+--- @field tooltip? string
+
+--- @param button TooltipButton
+local function onTooltipEnter(button)
+  if not button:IsShown() then return end
+  GameTooltip:SetOwner(button, button.tooltipAnchorOwner)
+  local buttonType = button:GetAttribute("type")
+  --- @type string | number
+  local subject = buttonType and button:GetAttribute(buttonType)
+  if button.tooltip then
+    GameTooltip:SetText(button.tooltip)
+  elseif buttonType == "spell" then
+    if type(subject) ~= "number" then
+      subject = GetSpellID(subject)
+    end
+    GameTooltip:SetSpellByID(subject)
+  elseif buttonType == "item" then
+    GameTooltip:SetItemByID(subject)
+  end
+  GameTooltip:Show()
+end
+
+--- @param button TooltipButton
+local function onTooltipLeave(button)
+  if not button:IsMouseOver() then
+    GameTooltip:FadeOut()
+  end
+end
+
+--- @param button TooltipButton
+local function onTooltipHide(button)
+  if button:IsMouseOver() then
+    GameTooltip:FadeOut()
+  end
+  local onHide = button.onTooltipHide
+  if onHide then onHide(button) end
+end
+
 --- @generic T: Button
 --- @param button T
 --- @param show boolean
 --- @param anchor? string
 --- @param onHide? fun(button: T): nil
 local function tooltip(button, show, anchor, onHide)
-  --- @cast button Button
+  --- @cast button TooltipButton
   button:SetMotionScriptsWhileDisabled(show)
-  button:SetScript("OnEnter", function(button)
-    if not button:IsShown() then return end
-    GameTooltip:SetOwner(button, "ANCHOR_" .. (anchor or "NONE"))
-    local buttonType = button:GetAttribute("type")
-    local subject = buttonType and button:GetAttribute(buttonType)
-    if button.tooltip then
-      GameTooltip:SetText(button.tooltip)
-    elseif buttonType == "spell" then
-      if type(subject) ~= "number" then
-        subject = GetSpellID(subject)
-      end
-      GameTooltip:SetSpellByID(subject)
-    elseif buttonType == "item" then
-      GameTooltip:SetItemByID(subject)
-    end
-    GameTooltip:Show()
-  end)
-  button:SetScript("OnLeave", function(button)
-    if not button:IsMouseOver() then
-      GameTooltip:FadeOut()
-    end
-  end)
-  button:SetScript("OnHide", function(button)
-    if button:IsMouseOver() then
-      GameTooltip:FadeOut()
-    end
-    if onHide then onHide(button) end
-  end)
+  button.tooltipAnchorOwner = "ANCHOR_" .. (anchor or "NONE")
+  button.onTooltipHide = onHide
+  button:SetScript("OnEnter", onTooltipEnter)
+  button:SetScript("OnLeave", onTooltipLeave)
+  button:SetScript("OnHide", onTooltipHide)
 end
 
 A.tooltip = tooltip

@@ -12,6 +12,9 @@ DoomCoreLocker = {}
 --- @return nil
 function DoomCoreLocker:Update() end
 
+--- @return nil
+function DoomCoreLocker:OnClick() end
+
 ----------
 -- Frames
 ----------

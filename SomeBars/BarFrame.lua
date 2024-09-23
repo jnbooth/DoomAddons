@@ -292,6 +292,26 @@ end
 --- @class BarFrameConstructor
 local BarFrameConstructor = { __index = BarFrame }
 
+--- @class BarAnimationGroup: AnimationGroup
+--- @field frame BarFrame
+
+--- @param self BarAnimationGroup
+local function onAppear(self)
+  local frame = self.frame
+  frame.fadeGroup:Stop()
+  frame:Show()
+end
+
+--- @param self BarAnimationGroup
+local function onFade(self)
+  self.frame.appearGroup:Stop()
+end
+
+--- @param self BarAnimationGroup
+local function onHide(self)
+  self.frame:Hide()
+end
+
 --- @param name string
 --- @param parent? Region
 --- @return BarFrame
@@ -307,46 +327,50 @@ function BarFrameConstructor:Create(name, parent)
   end
   frame.border = frame_border
 
-  frame.fg = frame:CreateTexture()
-  frame.fg:SetDrawLayer("BORDER")
-  frame.fg:SetAllPoints(frame)
-  frame.bg = frame:CreateTexture()
-  frame.bg:SetDrawLayer("BACKGROUND")
-  frame.bg:SetAllPoints(frame)
-  frame.bg:Hide()
+  local fg = frame:CreateTexture()
+  frame.fg = fg
+  fg = frame:CreateTexture()
+  fg:SetDrawLayer("BORDER")
+  fg:SetAllPoints(frame)
+  local bg = frame:CreateTexture()
+  frame.bg = bg
+  bg:SetDrawLayer("BACKGROUND")
+  bg:SetAllPoints(frame)
+  bg:Hide()
 
-  frame.button = CreateFrame("Button", frame:GetName() .. "Button", frame)
-  frame.button:SetFrameStrata("HIGH")
-  frame.button:EnableMouse(false)
-  frame.button:Disable()
-  frame.Goals = {}
+  local button = CreateFrame("Button", frame:GetName() .. "Button", frame)
+  frame.button = button
+  button:SetFrameStrata("HIGH")
+  button:EnableMouse(false)
+  button:Disable()
+  Goals = {}
   local spark = CreateTexturedFrame("Frame", frame:GetName() .. ".Spark", frame)
   frame.Spark = spark
   spark:SetFrameStrata("MEDIUM")
-  frame.icon = frame.button:CreateTexture()
-  frame.icon:SetAllPoints(frame.button)
+  local icon = button:CreateTexture()
+  frame.icon = icon
+  icon:SetAllPoints(frame.button)
 
-  frame.appearGroup = frame:CreateAnimationGroup()
-  frame.appear = frame.appearGroup:CreateAnimation("Alpha") --[[@as AlphaAnimation]]
-  frame.appear:SetDuration(0.15)
-  frame.appear:SetFromAlpha(0)
-  frame.appear:SetToAlpha(1)
-  frame.appearGroup:SetScript("OnPlay", function()
-    frame.fadeGroup:Stop()
-    frame:Show()
-  end)
+  local appearGroup = frame:CreateAnimationGroup() --[[@as BarAnimationGroup]]
+  frame.appearGroup = appearGroup
+  appearGroup.frame = frame
+  local appear = appearGroup:CreateAnimation("Alpha") --[[@as AlphaAnimation]]
+  frame.appear = appear
+  appear:SetDuration(0.15)
+  appear:SetFromAlpha(0)
+  appear:SetToAlpha(1)
+  appearGroup:SetScript("OnPlay", onAppear)
 
-  frame.fadeGroup = frame:CreateAnimationGroup()
-  frame.fade = frame.fadeGroup:CreateAnimation("Alpha") --[[@as AlphaAnimation]]
-  frame.fade:SetDuration(0.075)
-  frame.fade:SetFromAlpha(1)
-  frame.fade:SetToAlpha(0)
-  frame.fadeGroup:SetScript("OnPlay", function()
-    frame.appearGroup:Stop()
-  end)
-  frame.fadeGroup:SetScript("OnFinished", function()
-    frame:Hide()
-  end)
+  local fadeGroup = frame:CreateAnimationGroup() --[[@as BarAnimationGroup]]
+  frame.fadeGroup = fadeGroup
+  fadeGroup.frame = frame
+  local fade = fadeGroup:CreateAnimation("Alpha") --[[@as AlphaAnimation]]
+  frame.fade = fade
+  fade:SetDuration(0.075)
+  fade:SetFromAlpha(1)
+  fade:SetToAlpha(0)
+  fadeGroup:SetScript("OnPlay", onFade)
+  fadeGroup:SetScript("OnFinished", onHide)
   setmetatable(frame, self)
   return frame
 end
