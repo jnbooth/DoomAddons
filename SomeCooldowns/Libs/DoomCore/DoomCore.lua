@@ -1,6 +1,10 @@
+--- @diagnostic disable:duplicate-doc-alias
+--- @diagnostic disable:duplicate-doc-field
+--- @diagnostic disable:duplicate-doc-param
+--- @diagnostic disable:duplicate-index
+--- @diagnostic disable:duplicate-set-field
 local LibStub = LibStub
 
---- @meta
 --- @class DoomCore-2.1
 local D = LibStub:NewLibrary("DoomCore-2.1", 5)
 if not D then return end
@@ -13,18 +17,15 @@ function AA(addon)
   return AceAddon:GetAddon(addon, true)
 end
 
-local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring, type, UIParent, unpack =
-    BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring,
-    type, UIParent, unpack
+local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, tonumber, tostring, type, UIParent, unpack =
+    BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, tonumber, tostring, type,
+    UIParent, unpack
 local assertType, capitalize, colPack, colUnpack, Inherits, setIndex, sublist, tappend, tostrings, TypeCode =
-    A.assertType, A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend, A.tostrings,
-    A.TypeCode
+    A.assertType, A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend, A.tostrings, A
+    .TypeCode
 
-local type_boolean, type_number, type_string, type_table = TypeCode.Boolean, TypeCode.Number, TypeCode.String,
-    TypeCode.Table
-
---- @type fun(): nil
-local ReloadUI = ReloadUI
+local type_boolean, type_number, type_string, type_table =
+    TypeCode.Boolean, TypeCode.Number, TypeCode.String, TypeCode.Table
 
 -----------
 -- Anchors
@@ -43,7 +44,7 @@ local anchors = {
 }
 D.anchors = anchors
 
---- @type { [AnchorPoint]: TooltipAnchor }
+--- @type { [FramePoint]: TooltipAnchor }
 local tooltipAnchors = {}
 for anchor in pairs(anchors) do
   tooltipAnchors[anchor] = "ANCHOR_" .. anchor
@@ -51,7 +52,7 @@ end
 tooltipAnchors.CENTER = "ANCHOR_CURSOR"
 D.tooltipAnchors = tooltipAnchors
 
---- @param anchor AnchorPoint
+--- @param anchor FramePoint
 --- @return TooltipAnchor
 local function anchorToTooltip(anchor)
   if anchor == "CENTER" then
@@ -93,9 +94,9 @@ local direction = {
 }
 D.direction = direction
 
---- @param anchor1 AnchorPoint
---- @param anchor2 AnchorPoint
---- @return AnchorPoint
+--- @param anchor1 FramePoint
+--- @param anchor2 FramePoint
+--- @return FramePoint
 local function compound(anchor1, anchor2)
   local dir1, dir2 = direction[anchor1], direction[anchor2]
   if not dir1 then return anchor1 end
@@ -118,12 +119,12 @@ local grow = {
 D.grow = grow
 
 --- @class GrowAnchorData
---- @field [1] AnchorPoint | nil
---- @field [2] AnchorPoint | nil
+--- @field [1] FramePoint | nil
+--- @field [2] FramePoint | nil
 --- @field [3] number
 --- @field [4] number
 
---- @type { [AnchorPoint]: GrowAnchorData }
+--- @type { [FramePoint]: GrowAnchorData }
 local growAnchors = {
   LEFT   = { "RIGHT", "LEFT", -1, 0 },
   RIGHT  = { "LEFT", "RIGHT", 1, 0 },
@@ -156,7 +157,7 @@ local borders = {
 D.borders = borders
 
 --- @generic T
---- @param dir AnchorPoint | "HORIZONTAL" | "VERTICAL" | nil
+--- @param dir FramePoint | "HORIZONTAL" | "VERTICAL" | nil
 --- @param dim1 T
 --- @param dim2 T
 --- @return T, T
@@ -169,7 +170,6 @@ local function convertDims(dir, dim1, dim2)
 end
 
 D.convertDims = convertDims
-
 
 ----------
 -- Frames
@@ -269,6 +269,7 @@ local function updateFrame(frame, c, anchor, parent)
     frame.tex:Hide()
   end
   for _, child in pairs({ frame:GetChildren() }) do
+    --- @cast child Frame
     if child.EnableMouse then child:EnableMouse(not unlocked) end
   end
   return unlocked
@@ -299,11 +300,12 @@ end
 
 D.draggable = draggable
 
---- @param text FontInstance
+--- @param text FontString
 --- @param conf FrameSettings
 --- @return nil
 local function setFont(text, conf)
   local font = SharedMedia:Fetch(SharedMedia.MediaType.FONT, conf.font)
+  if font == nil then return end
   text:SetFont(font, conf.fontSize)
   if conf.fontColor then text:SetTextColor(colUnpack(conf.fontColor)) end
 end
@@ -609,6 +611,7 @@ function Configuration:CrawlDefaults(node, crawled)
   end
 end
 
+--- @class Configuration
 --- @generic T
 --- @param parent { [any]: T }
 --- @param makeType string
@@ -657,8 +660,8 @@ function Configuration:ConfGetString(info)
   return tostring(self:ConfGet(info))
 end
 
---- @overload fun(self: Configuration, info: tablekey[], r: number, g: number, b: number, a?: number): Color
---- @overload fun(self: Configuration, info: tablekey[], val: any): any
+--- @overload fun(self: self, info: tablekey[], r: number, g: number, b: number, a?: number): Color
+--- @overload fun(self: self, info: tablekey[], val: any): any
 function Configuration:ConfSet(info, r, g, b, a)
   if b ~= nil then
     return self:Set(info, colPack(r, g, b, a))
@@ -835,8 +838,9 @@ D.hook = hook
 --- @field shortName string
 --- @field mediaPath string
 --- @field timers { [string]: AceTimerObj }
+--- @field frames { [string]: Frame | DoomFrame }
 --- @field version number
---- @field OnLoad nil | fun(self: Handler, registered: boolean | nil): nil
+--- @field OnLoad nil | fun(self: self, registered: boolean | nil): nil
 local Handler = Configuration:New()
 
 --- @param addon AceAddon
@@ -943,7 +947,7 @@ function Handler:Reset(registered)
 
   local settings = self.settings
   if settings then
-    settings.options = { type = "group", args = {} }
+    settings.options = { type = "group", args = {}, handler = self }
     local defaults = self.defaults
     if defaults and defaults.options then
       settings.options = defaults.options
@@ -1018,9 +1022,9 @@ function Handler:MigrateDB(...)
   if self.version then self:SetVersion(self.version) end
 end
 
---- @overload fun(self: Handler, info: tablekey[], r: number, g: number, b: number, a: number): Color
---- @overload fun(self: Handler, info: tablekey[], r: number, g: number, b: number): Color
---- @overload fun(self: Handler, info: tablekey[], val: any): any
+--- @overload fun(self: self, info: tablekey[], r: number, g: number, b: number, a: number): Color
+--- @overload fun(self: self, info: tablekey[], r: number, g: number, b: number): Color
+--- @overload fun(self: self, info: tablekey[], val: any): any
 --- @return nil
 function Handler:ConfSetReload(info, r, g, b, a)
   self:ConfSet(info, r, g, b, a)
@@ -1280,7 +1284,7 @@ optTs.grow = {
 optTs.orientation = {
   type = "select",
   name = "Orientation",
-  values = D.orientations,
+  values = orientations,
   order = 12
 }
 optTs.aColor = {
@@ -1338,6 +1342,7 @@ local function optCopy(optOut, body)
         end
       end
     elseif k == "args" then
+      local opt = D.opt
       optOut[k] = optOut[k] or {}
       local args = optOut[k]
       local shift = 0
@@ -1362,7 +1367,7 @@ local function optCopy(optOut, body)
           end
           optType = optType or newI
           if args[newI] then newI = newI .. i end
-          args[newI] = D.opt(shift + i, optType, name, body)
+          args[newI] = opt(shift + i, optType, name, body)
         else
           args[i] = arg
         end

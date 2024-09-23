@@ -1,10 +1,12 @@
-﻿local _, N = ...
+﻿--- @diagnostic disable: missing-fields
+local _, N = ...
 
 local LibStub = LibStub
 
 local A = LibStub("Abacus-2.0")
 local D = LibStub("DoomCore-2.1")
-local pairs, tinsert = pairs, tinsert
+local C_Spell, pairs, tinsert = C_Spell, pairs, tinsert
+local GetSpellTexture = C_Spell.GetSpellTexture
 local opt, orderNum = D.opt, A.orderNum
 
 --- @class SomeTrackerSettings: HandlerSettings
@@ -28,11 +30,6 @@ defaults.options = opt("parent", {
     } }
   }
 })
---- @type ScoringSettings
-defaults.scoring = {
-  scoreChat = false,
-  scoreIcon = false,
-}
 --- @type Tracker
 defaults.tracker = {
   enabled = true,
@@ -44,7 +41,7 @@ defaults.tracker = {
   shadow = { r = 0, g = 0, b = 0, a = 1 },
   specialShadow = { r = 0, g = 0, b = 0, a = 0.5 },
   overrideColor = false,
-  duration = "3",
+  duration = 3,
   over = "exclude",
   lock = true,
   grow = "TOP",
@@ -105,7 +102,7 @@ local function buildMeterSettings(tracker, kind)
       width = "full"
     } }
   }
-  for meter in pairs(tracker[kind]) do
+  for meter in pairs(tracker[kind] or {}) do
     tinsert(meters, { "space" })
     tinsert(meters, { "_" .. meter, "execute", {
       name = "X",

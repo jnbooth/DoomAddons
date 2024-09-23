@@ -1,34 +1,31 @@
 --- @meta
 
-NUM_BAG_SLOTS = 4
-
---- @param button Button
---- @return nil
-function ActionButton_HideOverlayGlow(button) end
-
---- @param button Button
---- @return nil
-function ActionButton_ShowOverlayGlow(button) end
-
---- @class ArkInventory
-ArkInventory = {}
-
---- @return boolean
-function ArkInventory.CheckPlayerHasControl() end
-
 --- @class CooldownButton: Button
 --- @field Border Texture
 --- @field Flash Texture
 --- @field NormalTexture Texture
 --- @field icon Texture
 --- @field active boolean
---- @field GetAttribute fun(self: CooldownButton, attribute: string): any
 --- @field cooldown Cooldown
 --- @field cooldownFrame Cooldown
---- @field IsMouseOver fun(self: CooldownButton, offsetTop?: number, offsetBottom?: number, offsetLeft?: number, offsetRight?: number): boolean
+local CooldownButton = {}
+
+--- @param attribute string
+--- @return any
+function CooldownButton:GetAttribute(attribute) end
+
+--- @param offsetTop number?
+--- @param offsetBottom number?
+--- @param offsetLeft number?
+--- @param offsetRight number?
+--- @return boolean
+function CooldownButton:IsMouseOver(offsetTop, offsetBottom, offsetLeft, offsetRight) end
 
 --- @class CooldownsFrame: DoomFrame
---- @field GetChildren fun(self: CooldownsFrame): CooldownButton
+local CooldownsFrame = {}
+
+--- @return CooldownButton
+function CooldownsFrame:GetChildren() end
 
 --- @class ListedCooldown
 --- @field type "blacklist" | "whitelist"
@@ -49,14 +46,14 @@ function ArkInventory.CheckPlayerHasControl() end
 --- @field sort "long" | "short"
 --- @field text boolean
 --- @field tooltip boolean
---- @field tooltipAnchor AnchorPoint
+--- @field tooltipAnchor FramePoint
 --- @field tooltipOverride boolean
 --- @field xCenter boolean
 --- @field yCenter boolean
 
 --- @class SomeCooldownsLib: HandlerLib
---- @field somebars { exports: { [string]: (number|string)[] } }
+--- @field somebars { exports: { item: { [number]: true }, spell: { [number]: true } } }
 
---- @class CorePath
+--- @class CooldownsCorePath
 --- @field [1] string Setting name.
 --- @field [2]? number Group number.

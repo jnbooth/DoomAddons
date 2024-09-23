@@ -8,7 +8,6 @@ local gui = LibStub("AceGUI-3.0")
 local reg = LibStub("AceConfigRegistry-3.0")
 
 local MAJOR, MINOR = "AceConfigDialog-3.0", 66
---- @meta
 --- @class AceConfigDialog-3.0
 local AceConfigDialog, oldminor = LibStub:NewLibrary(MAJOR, MINOR)
 

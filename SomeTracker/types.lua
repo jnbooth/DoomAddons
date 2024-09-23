@@ -10,26 +10,26 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 --- @field icon number
 
 --- @class EffectLog
---- @field amount number
---- @field crit boolean
---- @field over number
---- @field timed number
+--- @field amount number | nil
+--- @field crit boolean | nil
+--- @field over number | nil
+--- @field timed number | nil
 --- @field cat string | nil
 --- @field partial boolean | nil
 --- @field miss { [miss]: number } | nil
 
 --- @class LogKey
---- @field kind string
---- @field timed number
---- @field seconds number
---- @field sourceName string
---- @field petMatch boolean
---- @field destGUID string
---- @field spellID string
+--- @field kind string | nil
+--- @field timed number | nil
+--- @field seconds number | nil
+--- @field sourceName string | nil
+--- @field petMatch boolean | nil
+--- @field destGUID string | nil
+--- @field spellID string | nil
 
 --- @class Tracker: FrameSettings
 --- @field color Color
---- @field duration string
+--- @field duration number
 --- @field enabled boolean
 --- @field grow "TOP" | "BOTTOM"
 --- @field iconSize number
@@ -48,8 +48,47 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 --- @field spell { [string]: Color }
 --- @field ignore { [string]: boolean }
 
+--- @class ButtonPool
+--- @field frame TrackerFrame
+--- @field name string
+--- @field size number
+local ButtonPool = {}
+
+--- @return AlertFrame
+function ButtonPool:Acquire() end
+
+--- @param button AlertFrame
+function ButtonPool:Release(button) end
+
+function ButtonPool:ReleaseAll() end
+
+--- @return fun(): AlertFrame, boolean
+function ButtonPool:EnumerateActive() end
+
+--- @return fun(): number, AlertFrame
+function ButtonPool:EnumerateInactive() end
+
+--- @param button AlertFrame
+--- @return AlertFrame?
+function ButtonPool:GetNextActive(button) end
+
+--- @param button AlertFrame
+--- @return AlertFrame?
+function ButtonPool:GetNextInactive(button) end
+
+--- @param button AlertFrame
+--- @return boolean
+function ButtonPool:IsActive(button) end
+
+--- @return number
+function ButtonPool:GetNumActive() end
+
+function ButtonPool:SetResetDisallowedIfNew() end
+
 --- @class TrackerFrame: DoomFrame
 --- @field msq MasqueGroup
+--- @field count number
+--- @field pool ButtonPool
 
 --- @class AlertFrame: Button
 --- @field Border Texture
@@ -58,9 +97,9 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 --- @field amount number
 --- @field animation AnimationGroup
 --- @field crit boolean | nil
+--- @field displayCrit boolean | nil
 --- @field fade Animation
 --- @field icon Texture
---- @field highlight AnimationGroup[]
 --- @field image Texture | nil
 --- @field kind "spell" | "aura" | nil
 --- @field meter string
@@ -69,23 +108,11 @@ COMBATLOG_FILTER_MY_PET = 0x00003111
 --- @field text FontString
 --- @field timed number
 --- @field count number
---- @field record number | nil
-
---- @class Score
---- @field col Color
---- @field icon number
---- @field amount number
-
---- @class ScoringSettings
---- @field scoreChat boolean
---- @field scoreIcon boolean
 
 --- @class SomeTrackerCore: HandlerCore
---- @field highscores { [string]: Score }
---- @field ["High Scores"] ScoringSettings
 --- @field Trackers { [string]: Tracker }
 
---- @class CorePath
+--- @class TrackersCorePath
 --- @field [1] string Tracker name.
 --- @field [2] string Setting name.
 --- @field [3]? string Optional nested setting name.

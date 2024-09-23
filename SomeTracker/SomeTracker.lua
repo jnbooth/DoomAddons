@@ -11,16 +11,20 @@ local D = LibStub("DoomCore-2.1")
 --- @field core SomeTrackerCore
 --- @field settings SomeTrackerSettings
 local Addon = D.Addon(shortName, "Some Tracker", N)
-Addon.version = 1.4
+Addon.version = 1.5
 
-local CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace =
-    CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo,
-    IsPassiveSpell,
-    pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, AuraUtil.FindAuraByName, UnitClass, UnitGUID,
-    UnitHealthMax, UnitName, UnitRace
+local CreateFrame, CombatLog_Object_IsA, C_Spell, floor, GetTime, GetSpecialization, pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace =
+    CreateFrame
+    , CombatLog_Object_IsA, C_Spell, floor, GetTime, GetSpecialization,
+    pairs, rawget, select, tinsert, tostring, type,
+    unpack, UIParent, AuraUtil.FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace
+
+local GetSpellDescription, GetSpellID, GetSpellTexture, IsSpellPassive = C_Spell.GetSpellDescription,
+    C_Spell.GetSpellIDForSpellIdentifier, C_Spell.GetSpellTexture, C_Spell.IsSpellPassive
 
 local abbrev, assertType, capitalize, colPack, colUnpack, isEmpty, nilSort, subInfo, NodeCrawler, setFont, TypeCode, updateFrame =
-    A.abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, D.subInfo, D.NodeCrawler,
+    A
+    .abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, D.subInfo, D.NodeCrawler,
     D.setFont, A.TypeCode, D.updateFrame
 
 local type_string, type_table = TypeCode.String, TypeCode.Table
@@ -32,8 +36,9 @@ local COMBATLOG_FILTER_MY_PET = COMBATLOG_FILTER_MY_PET
 local COMBATLOG_FILTER_MINE = COMBATLOG_FILTER_MINE
 
 local getIconColor = N.Niji.GetIconColor
---- @type HighScores
-local HighScores = N.HighScores
+
+--- @type { [string]: number }
+local spellTextures = {}
 
 --- @class PlayerInfo
 --- @field id string
@@ -69,8 +74,6 @@ function Addon:OnInitialize()
     masque = "Masque"
   })
 
-  self.lib.settings:AddToBlizOptions(self.name .. ": High Scores", "High Scores", self.name)
-
   self:TrackEvent("COMBAT_LOG_EVENT_UNFILTERED")
   self:TrackEvent("PLAYER_LOGIN")
 end
@@ -87,20 +90,14 @@ function Addon:OnLoad(registered)
     core.Trackers = trackers
   end
   local damage = self:Make(trackers, "tracker", "Default Damage")
-  if not rawget(damage, "overflow") then
-    damage.overflow = "addition"
+  if not rawget(damage, "over") then
+    damage.over = "additional"
   end
   local healing = self:Make(trackers, "tracker", "Default Healing")
   healing.trackerType = "healing"
   if not rawget(healing, "offsetX") then
     healing.offsetX = 30 * abs(damage.offsetX) / damage.offsetX - damage.offsetX
   end
-  local highscores = core.highscores
-  if highscores == nil then
-    highscores = {}
-    core.highscores = highscores
-  end
-  HighScores:Load(self, highscores)
 
   for trackerName in pairs(trackers) do
     self:BuildTracker(trackerName)
@@ -113,28 +110,32 @@ function Addon:Migrate(version)
   if version < 1.0 then return true end
   local core = self.core
   if version < 1.1 then
-    for trackerName, tracker in pairs(core --[[@as any]].trackers) do
-      local oldGrow = tracker.grow
-      if oldGrow == "up" then
-        tracker.grow = "TOP"
-      elseif oldGrow == "down" then
-        tracker.grow = "BOTTOM"
+    for trackerName, tracker in pairs(core --[[@as any]]) do
+      if type(tracker) == "table" and tracker.type == "tracker" then
+        local oldGrow = tracker.grow
+        if oldGrow == "up" then
+          tracker.grow = "TOP"
+        elseif oldGrow == "down" then
+          tracker.grow = "BOTTOM"
+        end
       end
     end
   end
   if version < 1.2 then
     local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth" }
-    for _, tracker in pairs(core --[[@as any]].trackers) do
-      for _, field in ipairs(fieldsToMigrate) do
-        local old = tracker[field]
-        if type(old) == "string" then
-          tracker[field] = old:upper()
+    for _, tracker in pairs(core --[[@as any]]) do
+      if type(tracker) == "table" and tracker.type == "tracker" then
+        for _, field in ipairs(fieldsToMigrate) do
+          local old = tracker[field]
+          if type(old) == "string" then
+            tracker[field] = old:upper()
+          end
         end
       end
     end
   end
   if version < 1.3 then
-    local trackers = self.core.Trackers
+    local trackers = self.core.trackers
     if trackers == nil then
       trackers = {}
       self.core.Trackers = trackers
@@ -148,11 +149,15 @@ function Addon:Migrate(version)
   end
   if version < 1.4 then
     self.core.Extras = self.core --[[@as any]]._debug
-    self.core._debug = nil
+    self.core --[[@as any]]._debug = nil
     self.core.Trackers = self.core --[[@as any]].trackers
-    self.core.trackers = nil
+    self.core --[[@as any]].trackers = nil
     self.core["High Scores"] = self.core --[[@as any]].scoring
-    self.core.scoring = nil
+    self.core --[[@as any]].scoring = nil
+  end
+  if version < 1.5 then
+    self.core["High Scores"] = nil
+    self.core --[[@as any]].highscores = nil
   end
   return false
 end
@@ -161,7 +166,7 @@ end
 -- Tracker editing
 -------------------
 
---- @param info CorePath
+--- @param info TrackersCorePath
 --- @param name string
 --- @return nil
 function Addon:AddTracker(info, name)
@@ -170,7 +175,7 @@ function Addon:AddTracker(info, name)
   self:BuildTracker(name)
 end
 
---- @param info CorePath
+--- @param info TrackersCorePath
 --- @param new string
 --- @return nil
 function Addon:RenameTracker(info, new)
@@ -187,7 +192,7 @@ function Addon:RenameTracker(info, new)
   self:BuildTracker(new)
 end
 
---- @param info CorePath
+--- @param info TrackersCorePath
 --- @return nil
 function Addon:DeleteTracker(info)
   assertType(info, type_table)
@@ -196,7 +201,7 @@ function Addon:DeleteTracker(info)
   self.settings.options.args.trackers[trackerName] = nil
 end
 
---- @param info CorePath
+--- @param info TrackersCorePath
 --- @return nil
 function Addon:DeleteMeter(info)
   assertType(info, type_table)
@@ -208,14 +213,19 @@ function Addon:DeleteMeter(info)
   trackerSettings[deleter] = nil
 end
 
---- @param info CorePath
+--- @param info TrackersCorePath
 --- @return nil
 function Addon:AddMeter(info, meter)
   assertType(info, type_table, meter, type_string)
   self.core.Trackers[info[1]].ignore = {}
   local key = subInfo(info, 1, -2)
   tinsert(key, meter)
-  self:Set(key, colPack(getIconColor(GetSpellTexture(meter))))
+  local spellTexture = GetSpellTexture(meter)
+  if spellTexture then
+    self:Set(key, colPack(getIconColor(spellTexture)))
+  else
+    self:Set(key, { r = 1, g = 1, b = 1, a = 1 })
+  end
   self:BuildTracker(info[1])
 end
 
@@ -223,18 +233,18 @@ end
 -- Frames
 ----------
 
---- @overload fun(self: SomeTracker, info: CorePath | nil, r: number, g: number, b: number, a: number): nil
---- @overload fun(self: SomeTracker, info: CorePath | nil, r: number, g: number, b: number): nil
---- @overload fun(self: SomeTracker, info: CorePath | nil, val: any): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, r: number, g: number, b: number, a: number): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, r: number, g: number, b: number): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, val: any): nil
 function Addon:UpdateSettings(info, r, g, b, a)
   if info then
     self:ConfSet(info, r, g, b, a)
   end
 end
 
---- @overload fun(self: SomeTracker, info: CorePath | nil, r: number, g: number, b: number, a: number): nil
---- @overload fun(self: SomeTracker, info: CorePath | nil, r: number, g: number, b: number): nil
---- @overload fun(self: SomeTracker, info: CorePath | nil, val: any): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, r: number, g: number, b: number, a: number): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, r: number, g: number, b: number): nil
+--- @overload fun(self: self, info: TrackersCorePath | nil, val: any): nil
 function Addon:Rebuild(info, r, g, b, a)
   if info then
     self:ConfSet(info, r, g, b, a)
@@ -252,6 +262,57 @@ function Addon:BuildTracker(name)
   self:BuildTrackerFrame(name, tracker)
 end
 
+--- @param animation {button:AlertFrame}
+local function finishAnimation(animation)
+  local button = animation.button
+  local parent = button:GetParent() --[[@as TrackerFrame]]
+  parent.pool:Release(button)
+  Addon:Queue("Sort", parent)
+end
+
+--- @param pool ButtonPool
+--- @return AlertFrame
+local function buttonPoolCreate(pool)
+  local size = pool.size
+  pool.size = size + 1
+  local frame = pool.frame
+  local buttonName = pool.name .. "-" .. pool.size
+  local button = CreateFrame("Button", buttonName, frame, "ActionButtonTemplate") --[[@as AlertFrame]]
+  local text = button:CreateFontString(buttonName .. ".text")
+  text:SetShadowOffset(1, -1)
+  button.text = text
+  button:Disable()
+  button:EnableMouse(false)
+  button.NormalTexture:Hide()
+
+  local msq = frame.msq
+  if msq then msq:AddButton(button) end
+
+  local animation = button:CreateAnimationGroup()
+  animation.button = button
+  animation:SetScript("OnFinished", finishAnimation)
+  button.animation = animation
+  local fade = animation:CreateAnimation("Alpha")
+  fade:SetDuration(fadeDuration)
+  fade:SetFromAlpha(1)
+  fade:SetToAlpha(0)
+  button.fade = fade
+
+  return button
+end
+
+--- @param _ ButtonPool
+--- @param button AlertFrame
+local function buttonPoolRelease(_, button)
+  button:Hide()
+  button:ClearAllPoints()
+
+  button.icon:SetTexture(missingIcon)
+  button.image = nil
+  button.kind = nil
+  button.meter = nil
+end
+
 --- @param name string
 --- @param tracker? Tracker
 --- @return TrackerFrame
@@ -261,19 +322,23 @@ function Addon:BuildTrackerFrame(name, tracker)
   self:AutoDefault(tracker)
   local frame = frames[name]
   if not frame then
-    frame = CreateFrame("Frame", self.shortName .. name, UIParent, "BackdropTemplate") --[[@as TrackerFrame]]
+    local frameName = self.shortName .. name
+    frame = CreateFrame("Frame", frameName, UIParent, "BackdropTemplate") --[[@as TrackerFrame]]
     frame.conf = tracker
     frame.tex = frame:CreateTexture(frame:GetName() .. ".tex", "BACKGROUND")
     frame.tex:SetAllPoints(frame)
     frame.tex:SetColorTexture(0, 1, 0, 0.5)
-
+    local pool = CreateObjectPool(buttonPoolCreate, buttonPoolRelease)
+    pool.frame = frame
+    pool.name = frameName
+    pool.size = 0
+    frame.pool = pool
     frames[name] = frame
     if self.lib.masque then
       frame.msq = self.lib.masque:Group(self.name, name)
     end
   end
   self:Draggable(frame, tracker)
-  frame.count = 0
   frame:ClearAllPoints()
   local size = tracker.iconSize
   frame:SetSize(size, size)
@@ -283,49 +348,6 @@ function Addon:BuildTrackerFrame(name, tracker)
   return frame
 end
 
---- @param button AlertFrame
---- @param frame Frame
---- @param tracker Tracker
---- @return nil
-function Addon:InitButton(button, frame, tracker)
-  button:EnableMouse(false)
-  button.NormalTexture:Hide()
-  button:Disable()
-  button.text = button:CreateFontString(button:GetName() .. ".text")
-  button.text:SetShadowOffset(1, -1)
-  local animations = button:CreateAnimationGroup()
-  local fade = animations:CreateAnimation("Alpha")
-  fade:SetStartDelay(tracker.duration)
-  fade:SetDuration(fadeDuration)
-  fade:SetFromAlpha(1)
-  fade:SetToAlpha(0)
-  button.fade = fade
-
-  button.highlight = {}
-  for i, layer in pairs({ button.Border, button.Flash }) do
-    layer:Show()
-    layer:SetAlpha(0)
-    local highlight = layer:CreateAnimationGroup()
-    highlight:SetLooping("BOUNCE")
-    local flash = highlight:CreateAnimation("Alpha")
-    flash:SetDuration(0.25)
-    flash:SetFromAlpha(0)
-    flash:SetToAlpha(1)
-    button.highlight[i] = highlight
-  end
-
-  animations:SetScript("OnFinished", function()
-    HighScores:Score(button.metername, button.amount + button.over, button.icon:GetTexture() --[[@as number]],
-      colPack(button.text:GetTextColor()))
-    button:Hide()
-    for _, highlight in pairs(button.highlight) do
-      highlight:Stop()
-    end
-    self:Queue("Sort", frame)
-  end)
-  button.animation = animations
-end
-
 --- @param trackerName string
 --- @param tracker Tracker
 --- @param kind string
@@ -333,23 +355,14 @@ end
 function Addon:GetFreeButton(trackerName, tracker, kind)
   assertType(trackerName, type_string, tracker, type_table, kind, type_string)
   local frame = frames[trackerName]
-  local button
-  for _, b in pairs { frame:GetChildren() } do
-    if not b:IsShown() then
-      button = b
-      break
-    end
-  end
-  if not button then
-    frame.count = frame.count + 1
-    --- @type AlertFrame
-    button = CreateFrame("Button", frame:GetName() .. "-" .. frame.count, frame, "ActionButtonTemplate")
-    self:InitButton(button, frame, tracker)
-    if frame.msq then frame.msq:AddButton(button) end
-  end
+  local button = frame.pool:Acquire()
+  button.fade:SetStartDelay(tracker.duration)
+  button.animation:Restart()
 
   local text = button.text
   setFont(text, tracker)
+  text:SetText("")
+  text:SetTextColor(1, 1, 1, 1)
   if kind == "aura" then
     text:SetShadowColor(colUnpack(tracker.specialShadow))
   else
@@ -369,28 +382,11 @@ end
 --- @return nil
 function Addon:Clear(trackerName)
   assertType(trackerName, type_string)
-  local children = { frames[trackerName]:GetChildren() }
-  if #children == 0 then return end
-  for _, child in pairs(children) do
-    self:RemoveAlert(trackerName, child)
-  end
-end
-
---- @param trackerName string
---- @param button AlertFrame
---- @return nil
-function Addon:RemoveAlert(trackerName, button)
-  assertType(trackerName, type_string, button, type_table)
   local frame = frames[trackerName]
-  button:Hide()
-  button:ClearAllPoints()
-
-  button.icon:SetTexture(missingIcon)
-  button.image = nil
-  button.kind = nil
-  button.meter = nil
-  button.text:SetText()
-  button.text:SetTextColor(1, 1, 1, 1)
+  local children = { frame:GetChildren() }
+  if #children == 0 then return end
+  local pool = frame.pool
+  pool:ReleaseAll()
 end
 
 local sortAnchors = {
@@ -410,6 +406,7 @@ function Addon:Sort(frame)
   end
   local visible = {}
   for _, child in pairs(children) do
+    --- @cast child AlertFrame
     if child:IsShown() then
       tinsert(visible, child)
     end
@@ -449,6 +446,7 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
   local frame = frames[trackerName]
   local alert
   for _, child in pairs({ frame:GetChildren() }) do
+    --- @cast child AlertFrame
     if child.kind == kind and child.meter == meter and child:IsShown() then
       alert = child
       break
@@ -456,17 +454,19 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
   end
   if not alert then
     alert = self:GetFreeButton(trackerName, tracker, kind)
-    local image = GetSpellTexture(metername)
-    if not image then
-      if kind == "aura" then
-        image = select(2, FindAuraByName(meter, "player")) or select(2, FindAuraByName(meter, "player"))
-      else
-        image = select(3, GetSpellInfo(meter)) or select(3, GetSpellInfo(meter))
-      end
-      if not image and kind == "spell" then image = select(3, GetSpellInfo(id)) end
+    local image = GetSpellTexture(id)
+    if not image and kind == "aura" then
+      image = select(2, FindAuraByName(meter, "player"))
     end
-    if color then alert.text:SetTextColor(colUnpack(color)) end
-    if image then alert.icon:SetTexture(image) end
+    if color then
+      alert.text:SetTextColor(colUnpack(color))
+    end
+    if image then
+      alert.icon:SetTexture(image)
+      alert.icon:Show()
+    else
+      alert.icon:Hide()
+    end
     alert.displayCrit = tracker.markCrits
     alert.crit = false
     alert.amount = 0
@@ -475,12 +475,6 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
     alert.meter = meter
     alert.metername = metername
     alert.timed = timed
-    alert.count = 0
-    if self.core["High Scores"].scoreIcon then
-      alert.record = HighScores:GetScore(meter)
-    else
-      alert.record = nil
-    end
     self:Queue("Sort", frame)
   end
 
@@ -488,12 +482,7 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
   alert.fade:SetStartDelay(tracker.duration + (delay or 0))
   alert.animation:Play()
 
-  alert.count = alert.count + 1
   alert.amount = alert.amount + amount
-
-  if alert.record and alert.amount + alert.over > alert.record then
-    for _, highlight in pairs(alert.highlight) do highlight:Play() end
-  end
 
   local displayAmount = alert.amount
 
@@ -510,9 +499,11 @@ function Addon:BuildAlert(trackerName, metername, meter, color, id, log, delay, 
     end
   else
     local amountString = abbrev(displayAmount)
-    alert.crit = alert.displayCrit and (alert.crit or crit)
-    if kind == "spell" and alert.crit then
-      amountString = amountString .. "*"
+    if crit then
+      alert.crit = true
+    end
+    if kind == "spell" and alert.crit and alert.displayCrit then
+      amountString = "*" .. amountString
     end
     if alert.over >= 1000 and displayOver == "additional" then
       amountString = amountString .. " (" .. abbrev(alert.over) .. ")"
@@ -557,7 +548,7 @@ function Addon:UpdateLog(logged, amount, over, crit, timed)
 end
 
 --- @param spellName string
---- @param spellID string
+--- @param spellID number
 --- @param trackerName string
 --- @param seconds number
 --- @param destGUID string
@@ -567,11 +558,12 @@ function Addon:Match(spellName, spellID, trackerName, seconds, destGUID, log)
   --- @type Tracker
   local tracker = self.core.Trackers[trackerName]
   if tracker.ignore[spellName] then return end
-  spellID = select(7, GetSpellInfo(spellName)) or spellID
+  spellID = GetSpellID(spellName) or spellID
   local notFound = true
-  local desc = tracker.related and (not IsSpellKnown(spellID) or IsPassiveSpell(spellID)) and
+  local desc = tracker.related and (not IsSpellKnown(spellID) or IsSpellPassive(spellID)) and
       GetSpellDescription(spellID)
   local tracker_spell = tracker.spell
+  if not tracker_spell then return end
   for meter, color in pairs(tracker_spell) do
     if meter == spellName or (desc and desc:find(meter, 1, true)) then
       notFound = false
@@ -614,6 +606,9 @@ function Addon:Match(spellName, spellID, trackerName, seconds, destGUID, log)
           if not tracker.missType or tracker.missType[missType] then
             self:BuildAlert(trackerName, meter, meter, color, spellID,
               {
+                crit = false,
+                displayCrit = false,
+                over = 0,
                 cat = missType,
                 amount = missAmount,
                 timed = log.timed
@@ -702,6 +697,7 @@ function Addon:COMBAT_LOG_EVENT_UNFILTERED()
     spellName = summon
   end
 
+  --- @cast timed number
   local seconds = tostring(floor(timed))
 
   if kind == "spell" then
@@ -785,14 +781,16 @@ function Addon:ResolveLog()
     if tracker and tracker.enabled and lastTotals[tracker.trackerType] then
       local tracker_spell = tracker.spell
       local total = lastTotals[tracker.trackerType]
-      for meter, color in pairs(tracker.aura) do
-        local name, icon, _, _, _, expires, _, _, _, id = FindAuraByName(meter, "player")
-        if color == {} then
-          color = colPack(getIconColor(icon))
-          tracker_spell[meter] = color
-        end
-        if name then
-          self:BuildAlert(trackerName, meter, meter, color, id, total, 2, expires - GetTime())
+      if tracker.aura then
+        for meter, color in pairs(tracker.aura) do
+          local name, icon, _, _, _, expires, _, _, _, id = FindAuraByName(meter, "player")
+          if color == {} then
+            color = colPack(getIconColor(icon))
+            tracker_spell[meter] = color
+          end
+          if name then
+            self:BuildAlert(trackerName, meter, meter, color, id, total, 2, expires - GetTime())
+          end
         end
       end
     end

@@ -1,5 +1,10 @@
+--- @diagnostic disable:duplicate-doc-alias
+--- @diagnostic disable:duplicate-doc-field
+--- @diagnostic disable:duplicate-doc-param
+--- @diagnostic disable:duplicate-index
+--- @diagnostic disable:duplicate-set-field
 --- @class Abacus-2.0
-local A = LibStub:NewLibrary("Abacus-2.0", 12)
+local A = LibStub:NewLibrary("Abacus-2.0", 11)
 if not A then return end
 tconcat = tconcat or table.concat
 local tconcat = tconcat
@@ -10,10 +15,11 @@ local fmod = fmod
 local band = bit.band
 
 local _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs, print, select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack =
-    _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs,
-    print, select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent,
-    unpack
-local GetItemInfo, GetSpellInfo = GetItemInfo, GetSpellInfo
+    _G
+    , ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs, print
+    , select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack
+local C_Spell, C_Item = C_Spell, C_Item
+local GetSpellID = C_Spell.GetSpellIDForSpellIdentifier
 
 --- Searches for an element within a table and returns the key/value pair if found.
 --- @generic K, V
@@ -570,7 +576,7 @@ A.colorify = colorify
 --- @param val string | number
 --- @return number | nil
 local function getItemID(val)
-  local itemString = select(2, GetItemInfo(val))
+  local itemString = select(2, C_Item.GetItemInfo(val))
   if type(itemString) ~= "string" then
     return nil
   end
@@ -623,7 +629,7 @@ local function tooltip(button, show, anchor, onHide)
       GameTooltip:SetText(button.tooltip)
     elseif buttonType == "spell" then
       if type(subject) ~= "number" then
-        subject = select(7, GetSpellInfo(subject))
+        subject = GetSpellID(subject)
       end
       GameTooltip:SetSpellByID(subject)
     elseif buttonType == "item" then

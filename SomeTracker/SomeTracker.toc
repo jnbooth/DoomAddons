@@ -16,5 +16,4 @@ Libs\LibStub\LibStub.lua
 Libs\Niji.lua
 embeds.xml
 Settings.lua
-HighScores.lua
 SomeTracker.lua

@@ -13,6 +13,11 @@
 ## SavedVariables: SomeBarsDB
 
 Libs\LibStub\LibStub.lua
+Libs\Niji.lua
 embeds.xml
+Bar.lua
+BarGroup.lua
+BarFrame.lua
+BarGroupFrame.lua
 Settings.lua
 SomeBars.lua

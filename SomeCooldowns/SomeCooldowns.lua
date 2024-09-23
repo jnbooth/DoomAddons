@@ -9,16 +9,27 @@ local LibStub = LibStub
 local A = LibStub:GetLibrary("Abacus-2.0")
 local D = LibStub:GetLibrary("DoomCore-2.1")
 
+local LCG = LibStub("LibCustomGlow-1.0")
+ActionButton_ShowOverlayGlow = LCG.ButtonGlow_Start
+ActionButton_HideOverlayGlow = LCG.ButtonGlow_Stop
+
+
+--- @class CooldownInfo
+--- @field [1] number | nil Record
+--- @field [2] CooldownButton | nil
+
 --- @class SomeCooldowns: Handler
 --- @field core SomeCooldownsCore
 --- @field lib SomeCooldownsLib
 --- @field settings SomeCooldownsSettings
+--- @field cooldowns { item: { [number]: CooldownInfo }, spell: { [number|string]: CooldownInfo } }
 local Addon = D.Addon(shortName, "Some Cooldowns", N)
 Addon.version = 0.4
 
-local _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon, GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime, ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack =
-    _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon,
-    GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime,
+local _G, C_Container, C_ToyBox, CreateFrame, GameTooltip, GetInventoryItemID, GetTime, ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack =
+    _G
+    , C_Container, C_ToyBox, CreateFrame, GameTooltip,
+    GetInventoryItemID, GetTime,
     ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack
 local GetContainerNumSlots, GetContainerItemID = C_Container.GetContainerNumSlots, C_Container.GetContainerItemID
 local GetNumToys = C_ToyBox.GetNumToys --[[@as fun(): number]]
@@ -26,8 +37,16 @@ local GetToyFromIndex = C_ToyBox
     .GetToyFromIndex --[[@as fun(itemIndex: number): number, string, number, boolean, boolean, Enum.ItemQuality]]
 local CheckPlayerHasControl = ArkInventory.CheckPlayerHasControl
 local colUnpack, getItemID, nilSort, tooltip, tooltipAnchors, makeGrid, updateFrame = A.colUnpack, A.getItemID, A
-    .nilSort, A.tooltip, D.tooltipAnchors, D.makeGrid, D.updateFrame
-local GetItemCooldown = GetItemCooldown --[[@as fun(itemID: number): number, number, number]]
+    .nilSort
+    , A.tooltip,
+    D.tooltipAnchors, D.makeGrid, D.updateFrame
+
+local C_Item, C_Spell, C_SpellBook = C_Item, C_Spell, C_SpellBook
+local GetItemCooldown, GetItemIcon, GetItemInfo, GetItemName = C_Item.GetItemCooldown, C_Item.GetItemIconByID,
+    C_Item.GetItemInfo, C_Item.GetItemNameByID
+local GetSpellCharges, GetSpellCooldown, GetSpellID, GetSpellName, GetSpellTexture = C_Spell.GetSpellCharges,
+    C_Spell.GetSpellCooldown, C_Spell.GetSpellIDForSpellIdentifier, C_Spell.GetSpellName, C_Spell.GetSpellTexture
+local GetSpellBookItemInfo = C_SpellBook.GetSpellBookItemInfo
 
 local gcd = 1.5
 Addon.cooldowns = { spell = {}, item = {} }
@@ -93,7 +112,6 @@ end
 
 --- @return nil
 function Addon:GET_ITEM_INFO_RECEIVED()
-  local crawler = self.settings.crawler
   for valName, val in pairs(self.core.group or {}) do
     if type(valName) == "number" and val.type then
       local entry = self.settings.crawler:Get({ val.type, "args", tostring(valName) })
@@ -124,12 +142,12 @@ function Addon:Migrate(version)
   end
   if version < 0.4 then
     core.Extras = core --[[@as any]]._debug
-    core._debug = nil
+    core --[[@as any]]._debug = nil
   end
   return false
 end
 
---- @param info? CorePath
+--- @param info? CooldownsCorePath
 --- @param val? boolean
 --- @return nil
 function Addon:SetFilter(info, val)
@@ -149,7 +167,7 @@ function Addon:SetFilter(info, val)
       else
         cooldowns = self.cooldowns.spell
       end
-      cooldowns[cooldown] = true
+      cooldowns[cooldown] = {}
       update = true
     end
   end
@@ -157,7 +175,7 @@ function Addon:SetFilter(info, val)
   self:Update(update)
 end
 
---- @param info CorePath
+--- @param info CooldownsCorePath
 --- @param val boolean
 function Addon:SetText(info, val)
   self:ConfSet(info, val)
@@ -166,7 +184,7 @@ function Addon:SetText(info, val)
   end
 end
 
---- @param info CorePath
+--- @param info CooldownsCorePath
 --- @param val boolean
 function Addon:SetReverse(info, val)
   self:ConfSet(info, val)
@@ -175,7 +193,7 @@ function Addon:SetReverse(info, val)
   end
 end
 
---- @param info CorePath
+--- @param info CooldownsCorePath
 --- @param r number
 --- @param g number
 --- @param b number
@@ -191,6 +209,36 @@ end
 ----------
 -- Events
 ----------
+
+--- @param type "item"|"spell"|string|nil
+--- @param id number
+--- @return number start
+--- @return number duration
+--- @return boolean enabled
+local function getCooldown(type, id)
+  if type == "item" then
+    return GetItemCooldown(id)
+  end
+  if type ~= "spell" then
+    return 0, 0, false
+  end
+  local chargeInfo = GetSpellCharges(id)
+  if chargeInfo then
+    local charges = chargeInfo.currentCharges
+    local maxCharges = chargeInfo.maxCharges
+    local start = chargeInfo.cooldownStartTime
+    local duration = chargeInfo.cooldownDuration
+    if charges and charges < maxCharges and start > 0 and duration > gcd then
+      return start, duration * (maxCharges - charges), true
+    end
+  end
+  local cooldownInfo = GetSpellCooldown(id)
+  if not cooldownInfo then
+    return 0, 0, false
+  end
+  return cooldownInfo.startTime, cooldownInfo.duration, cooldownInfo.isEnabled
+end
+
 
 --- @param force? boolean
 --- @return nil
@@ -209,18 +257,9 @@ function Addon:Sort(force)
       if type then
         local subject = button:GetAttribute(type)
         if subject then
-          if type == "spell" then
-            local charges, maxCharges, chargeStart, chargeDuration = GetSpellCharges(subject)
-            if charges and charges < maxCharges and chargeStart and chargeStart > 0 and chargeDuration > gcd then
-              start = chargeStart
-              duration = chargeDuration * (maxCharges - charges)
-            else
-              start, duration = GetSpellCooldown(subject)
-            end
-          elseif type == "item" then
-            start, duration = GetItemCooldown(subject)
-          end
-          if not start or not duration or duration <= gcd or start + duration + 1 <= time
+          local start, duration = getCooldown(type, subject)
+          if not start or not duration
+              or duration <= gcd or start + duration + 1 <= time
               or not button.cooldown:IsShown()
               or button.cooldown:GetCooldownDuration() == 0 then
             tinsert(remove, button)
@@ -266,25 +305,28 @@ function Addon:Sort(force)
   if frame.msq then frame.msq:ReSkin() end
 end
 
---- @param name string | nil
---- @param icon number
-function Addon:OnSpellCooldown(name, icon)
-  if not name then return end
+--- @param id number | nil
+function Addon:OnSpellCooldown(id)
+  if not id then return end
   local spellCooldowns = self.cooldowns.spell
   local record = 0
   local oldRecord, button
-  local info = spellCooldowns[name]
+  local info = spellCooldowns[id]
   if info then
     if info == true then return end
     oldRecord, button = unpack(info)
   else
     info = {}
-    spellCooldowns[name] = info
+    spellCooldowns[id] = info
   end
   if oldRecord == true then return end
-  local start, duration, cooldown
-  local charges, maxCharges, chargeStart, chargeDuration = GetSpellCharges(name)
-  if charges then
+  local start, duration, enabled
+  local chargeInfo = GetSpellCharges(id)
+  if chargeInfo and chargeInfo.currentCharges then
+    local charges = chargeInfo.currentCharges
+    local maxCharges = chargeInfo.maxCharges
+    local chargeStart = chargeInfo.cooldownStartTime
+    local chargeDuration = chargeInfo.cooldownDuration
     record = charges
     if oldRecord == record then return end
     if not self.core.recharge and charges > 0 then return end
@@ -296,42 +338,45 @@ function Addon:OnSpellCooldown(name, icon)
     if charges < maxCharges and chargeStart and chargeStart > 0 and chargeDuration > gcd then
       start = chargeStart
       duration = chargeDuration * (maxCharges - charges)
-      cooldown = true
+      enabled = true
     end
   else
     if oldRecord == record then return end
-    start, duration, cooldown = GetSpellCooldown(name)
+    local cooldownInfo = GetSpellCooldown(id)
+    start = cooldownInfo.startTime
+    duration = cooldownInfo.duration
+    enabled = cooldownInfo.isEnabled
   end
-  if name and start and start > 0 and duration > gcd and cooldown then
+  if id and start and start > 0 and duration > gcd and enabled then
     info[1] = record
-    self:AddButton("spell", name, start, duration, icon)
-    self:Output("Sorting with spell ", name)
+    self:AddButton("spell", id, start, duration)
+    self:Output("Sorting with spell ", id)
     return true
   end
 end
 
---- @param name number | nil
-function Addon:OnItemCooldown(name)
-  if not name then return end
+--- @param id number | nil
+function Addon:OnItemCooldown(id)
+  if not id then return end
   local itemCooldowns = self.cooldowns.item
-  local oldRecord, button
-  local info = itemCooldowns[name]
+  local oldRecord
+  local info = itemCooldowns[id]
   if info then
     if info == true then return end
-    oldRecord, button = unpack(info)
+    oldRecord = info[1]
     if oldRecord then return end
   else
     info = {}
-    itemCooldowns[name] = info
+    itemCooldowns[id] = info
   end
   if oldRecord then return end
-  local start, duration, cooldown = GetItemCooldown(name)
+  local start, duration, cooldown = GetItemCooldown(id)
   if not start then return end
 
   if start > 0 and duration > gcd and cooldown then
     info[1] = 0
-    self:AddButton("item", name, start, duration, GetItemIcon(name))
-    self:Output("Sorting with item ", name)
+    self:AddButton("item", id, start, duration)
+    self:Output("Sorting with item ", id)
     return true
   end
 end
@@ -358,8 +403,8 @@ function Addon:Update(hard)
         end
         resort = fromCooldown or resort
       else
-        local icon = select(3, GetSpellInfo(cooldown))
-        local fromCooldown = self:OnSpellCooldown(cooldown, icon)
+        local id = GetSpellID(cooldown)
+        local fromCooldown = self:OnSpellCooldown(id)
         if fromCooldown then
           self:Output("Sorted from whitelist spell ", cooldown)
         end
@@ -371,13 +416,11 @@ function Addon:Update(hard)
   if self.core.displaySpells then
     local index = 1
     while true do
-      local _, id = GetSpellBookItemInfo(index, "spell")
+      local _, id = GetSpellBookItemInfo(index, 0)
       if not id then break end
-      local spell, _, icon = GetSpellInfo(id)
-      spell = GetSpellInfo(spell) or spell
-      local fromCooldown = self:OnSpellCooldown(spell, icon)
+      local fromCooldown = self:OnSpellCooldown(id)
       if fromCooldown then
-        self:Output("Sorted from spell ", spell)
+        self:Output("Sorted from spell ", id)
       end
       resort = fromCooldown or resort
       index = index + 1
@@ -424,8 +467,8 @@ end
 -- Frames
 ----------
 
---- @overload fun(self: SomeCooldowns, info: CorePath, r: number, g: number, b: number, a?: number): nil
---- @overload fun(self: SomeCooldowns, info: CorePath, val: any): nil
+--- @overload fun(self: self, info: CorePath, r: number, g: number, b: number, a?: number): nil
+--- @overload fun(self: self, info: CorePath, val: any): nil
 function Addon:Rebuild(info, r, g, b, a)
   if info then self:ConfSet(info, r, g, b, a) end
   local size = self.core.iconSize
@@ -441,7 +484,7 @@ function Addon:Rebuild(info, r, g, b, a)
   updateFrame(frame, self.core)
 end
 
---- @param info CorePath
+--- @param info CooldownsCorePath
 --- @param val number | string
 function Addon:Add(info, val)
   local group
@@ -453,7 +496,7 @@ function Addon:Add(info, val)
     return
   end
 
-  if not GetSpellInfo(val) then
+  if not GetSpellID(val) then
     local itemId = getItemID(val)
     if itemId == nil then
       return
@@ -515,42 +558,37 @@ function Addon:InitButton(button)
 end
 
 --- @param buttonType "item" | "spell"
---- @param subject string | number
+--- @param id number
 --- @param time number
 --- @param duration number
---- @param texture number
-function Addon:AddButton(buttonType, subject, time, duration, texture)
+function Addon:AddButton(buttonType, id, time, duration)
   local typeCooldowns = self.cooldowns[buttonType]
+  --- @type string?, number?
+  local name, icon
+  if buttonType == "spell" then
+    name = GetSpellName(id)
+    icon = GetSpellTexture(id)
+  else
+    name = GetItemName(id)
+    icon = GetItemIcon(id)
+  end
   for cooldown, data in pairs(self.core.group) do
-    if data.type == "blacklist" and (subject == cooldown
-          or (buttonType == "spell" and GetSpellInfo(subject) == cooldown)
-          or (buttonType == "item" and GetItemInfo(subject) == GetItemInfo(cooldown))) then
+    if data.type == "blacklist" and (id == cooldown or name == cooldown) then
       return
     end
   end
   local somebars = self.core.Extras.somebars and self.lib.somebars
-  if somebars then
-    local name
-    if buttonType == "spell" then
-      name = GetSpellInfo(subject)
-    elseif buttonType == "item" then
-      name = GetItemInfo(subject)
-    end
-    for _, bar in pairs(somebars.exports) do
-      for _, watched in ipairs(bar) do
-        if subject == watched or name == watched then
-          return
-        end
-      end
-    end
+  local somebars_exports = somebars and somebars.exports
+  if somebars_exports and somebars_exports[buttonType][id] then
+    return
   end
   local button
-  local oldInfo = typeCooldowns[subject]
+  local oldInfo = typeCooldowns[id]
   if oldInfo then
     button = oldInfo[2]
   else
     oldInfo = {}
-    typeCooldowns[subject] = oldInfo
+    typeCooldowns[id] = oldInfo
   end
   if not button then
     for _, b in pairs({ frame:GetChildren() }) do
@@ -566,12 +604,12 @@ function Addon:AddButton(buttonType, subject, time, duration, texture)
     self:InitButton(button)
     if frame.msq then frame.msq:AddButton(button) end
   end
-  typeCooldowns[subject][2] = button
-  button.icon:SetTexture(texture)
+  typeCooldowns[id][2] = button
+  button.icon:SetTexture(icon)
   local iconSize = self.core.iconSize
   button:SetSize(iconSize, iconSize)
   button:SetAttribute("type", buttonType)
-  button:SetAttribute(buttonType, subject)
+  button:SetAttribute(buttonType, id)
   button:GetNormalTexture():Hide()
   button.cooldownFrame:SetCooldown(time, duration)
   button.cooldownFrame:SetReverse(self.core.reverse)
@@ -580,7 +618,7 @@ function Addon:AddButton(buttonType, subject, time, duration, texture)
   --button:Show()
 end
 
---- @param info CorePath
+--- @param info CooldownsCorePath
 --- @param val any
 function Addon:UpdateTooltips(info, val)
   self:ConfSet(info, val)

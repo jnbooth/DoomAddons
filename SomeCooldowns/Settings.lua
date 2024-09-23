@@ -6,9 +6,11 @@ N.Settings = Settings
 local A = LibStub:GetLibrary("Abacus-2.0")
 local D = LibStub:GetLibrary("DoomCore-2.1")
 
-local GetItemInfo, GetItemIcon, GetSpellInfo, select, tonumber, tostring, type = GetItemInfo, GetItemIcon, GetSpellInfo,
-    select, tonumber, tostring, type
+local tonumber, tostring, type = tonumber, tostring, type
 local direction, HORIZONTAL, opt, orderNum, VERTICAL = D.direction, D.HORIZONTAL, D.opt, A.orderNum, D.VERTICAL
+local C_Item, C_Spell = C_Item, C_Spell
+local GetItemIcon, GetItemName = C_Item.GetItemIconByID, C_Item.GetItemNameByID
+local GetSpellTexture = C_Spell.GetSpellTexture
 
 local defaults = {}
 defaults.global = {
@@ -189,23 +191,24 @@ function Settings:Add(group, val)
   local entry = {
     type = "execute",
     func = function(info)
-      info.handler:ConfDelete({ "group", val })
+      local handler = info.handler --[[@as SomeCooldowns]]
+      handler.core.group[val] = nil
       if type(val) == "number" then
-        info.handler.cooldowns.item[val] = nil
+        handler.cooldowns.item[val] = nil
       else
-        info.handler.cooldowns.spell[val] = nil
+        handler.cooldowns.spell[val] = nil
       end
       self.crawler:Set({ group, "args", tostring(val) }, nil)
 
-      info.handler:Update(group == "whitelist")
+      handler:Update(group == "whitelist")
     end
   }
   if type(val) == "number" then
-    entry.name = GetItemInfo(val)
+    entry.name = GetItemName(val)
     entry.image = GetItemIcon(val)
   else
     entry.name = val
-    entry.image = select(3, GetSpellInfo(val))
+    entry.image = GetSpellTexture(val)
   end
   if not entry.name then return end
   entry.order = orderNum(entry.name)
