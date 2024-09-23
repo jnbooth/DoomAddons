@@ -13,12 +13,12 @@ function AA(addon)
   return AceAddon:GetAddon(addon, true)
 end
 
-local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring, type, UIParent, unpack = BNGetInfo
-    , ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring,
+local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring, type, UIParent, unpack =
+    BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring,
     type, UIParent, unpack
-local assertType, capitalize, colPack, colUnpack, Inherits, setIndex, sublist, tappend, tostrings, TypeCode = A.assertType
-    , A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend,
-    A.tostrings, A.TypeCode
+local assertType, capitalize, colPack, colUnpack, Inherits, setIndex, sublist, tappend, tostrings, TypeCode =
+    A.assertType, A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend, A.tostrings,
+    A.TypeCode
 
 local type_boolean, type_number, type_string, type_table = TypeCode.Boolean, TypeCode.Number, TypeCode.String,
     TypeCode.Table
@@ -132,7 +132,8 @@ local growAnchors = {
   CENTER = { "CENTER", "CENTER", 0, 0 }
 }
 D.growAnchors = growAnchors
-for _, dir1 in pairs({ "LEFT", "RIGHT" }) do for _, dir2 in pairs({ "TOP", "BOTTOM" }) do
+for _, dir1 in pairs({ "LEFT", "RIGHT" }) do
+  for _, dir2 in pairs({ "TOP", "BOTTOM" }) do
     growAnchors[compound(growAnchors[dir1][1], growAnchors[dir2][1])] = { nil, nil, growAnchors[dir1][3],
       growAnchors[dir2][4] }
   end
@@ -371,7 +372,7 @@ local function makeGrid(frame, c)
   local growComp = growAnchors[comp]
 
   frame:ClearAllPoints()
-  if parent and anchor then
+  if anchor then
     frame:SetPoint(comp, parent, anchor,
       --conf_x - (conf_size + conf_padding * 2) * growComp[3] / 2,
       --conf_y - (conf_size + conf_padding * 2) * growComp[4] / 2)
@@ -659,9 +660,13 @@ end
 --- @overload fun(self: Configuration, info: tablekey[], r: number, g: number, b: number, a?: number): Color
 --- @overload fun(self: Configuration, info: tablekey[], val: any): any
 function Configuration:ConfSet(info, r, g, b, a)
-  if b ~= nil then return self:Set(info, colPack(r, g, b, a))
-  elseif tonumber(r) then return self:Set(info, tonumber(r))
-  else return self:Set(info, r) end
+  if b ~= nil then
+    return self:Set(info, colPack(r, g, b, a))
+  elseif tonumber(r) then
+    return self:Set(info, tonumber(r))
+  else
+    return self:Set(info, r)
+  end
 end
 
 --- @param info tablekey[]
@@ -740,6 +745,83 @@ end
 
 D.Configuration = Configuration
 
+--- @param obj table
+--- @return (fun(info: tablekey[]): ...), (fun(info: tablekey[], val: any): any)
+local function createSettingsHandlers(obj)
+  local function get(info)
+    local key = info[#info]
+    local val = obj[key]
+    if type(val) == "table" and val.r and val.g and val.b then
+      return colUnpack(val)
+    end
+  end
+
+  local function set(info, r, g, b, a)
+    local key = info[#info]
+    if b ~= nil then
+      obj[key] = colPack(r, g, b, a)
+      return
+    end
+    local asnumber = tonumber(r)
+    if asnumber then
+      obj[key] = asnumber
+      return
+    end
+    obj[key] = r
+  end
+
+  return get, set
+end
+
+--- @param info AceInfo
+--- @return ...
+local function confGet(info)
+  local handler = info.handler --[[@as table]]
+  local key = info[#info]
+  local val = handler[key]
+  if type(val) == "table" and val.r and val.g and val.b then
+    return colUnpack(val)
+  end
+  return val
+end
+
+D.confGet = confGet
+
+--- @param info AceInfo
+--- @param r any
+--- @param g? number
+--- @param b? number
+--- @param a? number
+local function confSet(info, r, g, b, a)
+  local handler = info.handler --[[@as table]]
+  local key = info[#info]
+  if b ~= nil then
+    handler[key] = colPack(r, g, b, a)
+    return
+  end
+  handler[key] = r
+end
+
+D.confSet = confSet
+
+D.createSettingsHandlers = createSettingsHandlers
+
+--- @generic T: function
+--- @param hookFunc nil | function
+--- @param func T
+--- @return T
+local function hook(hookFunc, func)
+  if not hookFunc then
+    return func
+  end
+  return function(...)
+    local result = func(...)
+    hookFunc(...)
+    return result
+  end
+end
+
+D.hook = hook
 
 -----------------
 -- Addon handler
@@ -1047,8 +1129,11 @@ function Handler:Draggable(frame, conf, funcName)
   if frame:GetScript("OnReceiveDrag") then return end
   funcName = funcName or "Rebuild"
   local func = function()
-    if type(funcName) == "function" then funcName()
-    elseif type(self[funcName]) == "function" then self[funcName](self) end
+    if type(funcName) == "function" then
+      funcName()
+    elseif type(self[funcName]) == "function" then
+      self[funcName](self)
+    end
     self.lib.registry:NotifyChange(self.name)
   end
   draggable(frame, conf, func)
@@ -1226,7 +1311,8 @@ for _, check in pairs({ "disabled", "hidden", "confirm" }) do
   checks[check] = true
 end
 local function ensureCheck(k, v)
-  if checks[k] and type(v) == "table" then return function(info)
+  if checks[k] and type(v) == "table" then
+    return function(info)
       tremove(info)
       return info.handler:Check(v, info)
     end
@@ -1256,7 +1342,8 @@ local function optCopy(optOut, body)
       local args = optOut[k]
       local shift = 0
       for i, arg in pairs(v) do
-        if type(arg) == "number" then shift = arg - i - 1
+        if type(arg) == "number" then
+          shift = arg - i - 1
         elseif type(i) == "number" then
           local newI, optType, name, body = unpack(arg)
           if type(name) == "table" then
@@ -1311,3 +1398,240 @@ local function opt(order, optType, name, body)
 end
 
 D.opt = opt
+
+local configTemplates = {
+  space = {
+    __index = {
+      type = "description",
+      name = "",
+      width = "full"
+    }
+  },
+  label = {
+    __index = {
+      type = "description",
+      width = "half",
+      fontSize = "medium"
+    }
+  },
+  text = {
+    __index = {
+      type = "description",
+      width = "full",
+      fontSize = "medium"
+    }
+  },
+  background = {
+    __index = {
+      name = "Background",
+      type = "select",
+      dialogControl = "LSM30_Background",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.BACKGROUND)
+    }
+  },
+  border = {
+    __index = {
+      name = "Border",
+      type = "select",
+      dialogControl = "LSM30_Border",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.BORDER)
+    }
+  },
+  font = {
+    __index = {
+      name = "Font",
+      type = "select",
+      dialogControl = "LSM30_Font",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.FONT)
+    }
+  },
+  fontSize = {
+    __index = {
+      type = "range",
+      name = "Font size",
+      min = 1,
+      max = 100,
+      softMin = 10,
+      softMax = 50,
+      step = 1
+    }
+  },
+  iconSize = {
+    __index = {
+      type = "range",
+      name = "Icon size",
+      min = 1,
+      max = 100,
+      softMin = 5,
+      softMax = 50,
+      step = 0.5
+    }
+  },
+  iconSpacing = {
+    __index = {
+      type = "range",
+      name = "Icon Spacing",
+      min = -100,
+      max = 100,
+      softMin = -20,
+      softMax = 20,
+      step = 0.5
+    }
+  },
+  borderSize = {
+    __index = {
+      type = "range",
+      name = "Border size",
+      min = 1,
+      max = 100,
+      softMax = 36,
+      step = 0.5
+    }
+  },
+  inset = {
+    __index = {
+      type = "range",
+      name = "Inset",
+      min = 0,
+      max = 100,
+      softMax = 36,
+      step = 0.5
+    }
+  },
+  anchor = {
+    __index = {
+      type = "select",
+      name = "Anchor",
+      values = anchors
+    }
+  },
+  offsetX = {
+    __index = {
+      type = "range",
+      name = "X",
+      min = -floor(UIParent:GetWidth()),
+      max = floor(UIParent:GetWidth()),
+      step = 0.5,
+    }
+  },
+  offsetY = {
+    __index = {
+      type = "range",
+      name = "Y",
+      min = -floor(UIParent:GetHeight()),
+      max = floor(UIParent:GetHeight()),
+      step = 0.5,
+    }
+  },
+  grow = {
+    __index = {
+      type = "select",
+      name = "Grow",
+      values = grow
+    }
+  },
+  orientation = {
+    __index = {
+      type = "select",
+      name = "Orientation",
+      values = D.orientations,
+    }
+  },
+  color = {
+    __index = {
+      name = "Color",
+      type = "color",
+      hasAlpha = true,
+      width = "half"
+    }
+  },
+  percent = {
+    __index = {
+      type = "range",
+      min = 0,
+      max = 1,
+      step = 0.01,
+      isPercent = true
+    }
+  },
+  scale = {
+    __index = {
+      type = "range",
+      name = "Scale",
+      min = 0.001,
+      max = 10,
+      softMax = 2,
+      step = 0.001,
+      isPercent = true
+    }
+  },
+}
+
+--- @class _ColorBase: AceOptionColor
+--- @field type nil
+--- @alias _ColorTemplate fun(base?: _ColorBase): AceOptionColor
+
+--- @class _DescriptionBase: AceOptionDescription
+--- @field type nil
+--- @alias _DescriptionTemplate fun(base?: _DescriptionBase): AceOptionDescription
+
+--- @class _RangeBase: AceOptionRange
+--- @field type nil
+--- @alias _RangeTemplate fun(base?: _RangeBase): AceOptionRange
+
+--- @class _SelectBase: AceOptionSelect
+--- @field type nil
+--- @field values nil | { [string]: any } | fun(info: AceInfo): { [string]: any }
+--- @alias _SelectTemplate fun(base?: _SelectBase): AceOptionSelect
+
+--- @class ConfigTemplate
+--- @field space fun(base?: { order?: number }): AceOptionDescription
+--- @field label _DescriptionTemplate
+--- @field text _DescriptionTemplate
+--- @field background _SelectTemplate
+--- @field border _SelectTemplate
+--- @field font _SelectTemplate
+--- @field fontSize _RangeTemplate
+--- @field iconSize _RangeTemplate
+--- @field iconSpacing _RangeTemplate
+--- @field inset _RangeTemplate
+--- @field anchor _SelectTemplate
+--- @field offsetX _RangeTemplate
+--- @field offsetY _RangeTemplate
+--- @field grow _SelectTemplate
+--- @field orientation _SelectTemplate
+--- @field color _ColorTemplate
+--- @field percent _RangeTemplate
+--- @field scale _RangeTemplate
+local ConfigTemplate = {}
+
+for templateName, template in pairs(configTemplates) do
+  local proto = template.__index
+  ConfigTemplate[templateName] = function(base)
+    if not base then
+      return proto
+    end
+    setmetatable(base, template)
+    return base
+  end
+end
+
+D.ConfigTemplate = ConfigTemplate
+
+--- @class ConfigTemplateGroup: AceOptionGroup
+--- @field args ExpandedAceOptions[] | { [string]: AceOption }
+
+--- @alias ExpandedAceOptions AceOption | AceOptionBase | ConfigTemplateGroup
+
+--- @param node AceOption
+local function expandOpts(node)
+  local template = configTemplates[rawget(node, 'type')]
+  if template then
+    setmetatable(node, template)
+    node.type = nil
+  end
+  local args = node.args
+  if args and #args ~= 0 then
+    local shift = 0
+  end
+end

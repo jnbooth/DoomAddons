@@ -16,17 +16,17 @@ local D = LibStub:GetLibrary("DoomCore-2.1")
 local Addon = D.Addon(shortName, "Some Cooldowns", N)
 Addon.version = 0.4
 
-local _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon, GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime, ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack = _G
-    , ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon,
+local _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon, GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime, ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack =
+    _G, ActionButton_ShowOverlayGlow, ActionButton_HideOverlayGlow, C_Container, C_ToyBox, CreateFrame, GetItemIcon,
     GetItemInfo, GetInventoryItemID, GetSpellBookItemInfo, GetSpellCharges, GetSpellCooldown, GetSpellInfo, GetTime,
     ipairs, NUM_BAG_SLOTS, pairs, PlayerHasToy, select, tinsert, tostring, type, UIParent, unpack
 local GetContainerNumSlots, GetContainerItemID = C_Container.GetContainerNumSlots, C_Container.GetContainerItemID
 local GetNumToys = C_ToyBox.GetNumToys --[[@as fun(): number]]
-local GetToyFromIndex = C_ToyBox.GetToyFromIndex --[[@as fun(itemIndex: number): number, string, number, boolean, boolean, Enum.ItemQuality]]
+local GetToyFromIndex = C_ToyBox
+    .GetToyFromIndex --[[@as fun(itemIndex: number): number, string, number, boolean, boolean, Enum.ItemQuality]]
 local CheckPlayerHasControl = ArkInventory.CheckPlayerHasControl
-local colUnpack, getItemID, nilSort, tooltip, tooltipAnchors, makeGrid, updateFrame = A.colUnpack, A.getItemID, A.nilSort
-    , A.tooltip,
-    D.tooltipAnchors, D.makeGrid, D.updateFrame
+local colUnpack, getItemID, nilSort, tooltip, tooltipAnchors, makeGrid, updateFrame = A.colUnpack, A.getItemID, A
+    .nilSort, A.tooltip, D.tooltipAnchors, D.makeGrid, D.updateFrame
 local GetItemCooldown = GetItemCooldown --[[@as fun(itemID: number): number, number, number]]
 
 local gcd = 1.5
@@ -123,7 +123,7 @@ function Addon:Migrate(version)
     end
   end
   if version < 0.4 then
-    core.Extras = core--[[@as any]] ._debug
+    core.Extras = core --[[@as any]]._debug
     core._debug = nil
   end
   return false
@@ -523,8 +523,8 @@ function Addon:AddButton(buttonType, subject, time, duration, texture)
   local typeCooldowns = self.cooldowns[buttonType]
   for cooldown, data in pairs(self.core.group) do
     if data.type == "blacklist" and (subject == cooldown
-        or (buttonType == "spell" and GetSpellInfo(subject) == cooldown)
-        or (buttonType == "item" and GetItemInfo(subject) == GetItemInfo(cooldown))) then
+          or (buttonType == "spell" and GetSpellInfo(subject) == cooldown)
+          or (buttonType == "item" and GetItemInfo(subject) == GetItemInfo(cooldown))) then
       return
     end
   end

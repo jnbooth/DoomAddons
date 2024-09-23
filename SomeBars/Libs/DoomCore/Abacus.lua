@@ -1,17 +1,18 @@
 --- @class Abacus-2.0
 local A = LibStub:NewLibrary("Abacus-2.0", 12)
 if not A then return end
-tconcat       = tconcat or table.concat
+tconcat = tconcat or table.concat
 local tconcat = tconcat
-pow           = pow or math.pow
-local pow     = pow
-fmod          = fmod or math.fmod
-local fmod    = fmod
-local band    = bit.band
+pow = pow or math.pow
+local pow = pow
+fmod = fmod or math.fmod
+local fmod = fmod
+local band = bit.band
 
-local _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs, print, select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack = _G
-    , ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs, print
-    , select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack
+local _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs, print, select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent, unpack =
+    _G, ceil, CreateFrame, error, floor, GameTooltip, getmetatable, getn, HideUIPanel, ipairs, min, max, next, pairs,
+    print, select, setmetatable, ShowUIPanel, sort, strbyte, strsplit, tinsert, tonumber, tostring, type, UIParent,
+    unpack
 local GetItemInfo, GetSpellInfo = GetItemInfo, GetSpellInfo
 
 --- Searches for an element within a table and returns the key/value pair if found.
@@ -33,9 +34,12 @@ A.tcontains = tcontains
 --- @param maxBound number
 --- @return number
 local function bounded(minBound, val, maxBound)
-  if minBound and val < minBound then return minBound
-  elseif maxBound and val > maxBound then return maxBound
-  else return val
+  if minBound and val < minBound then
+    return minBound
+  elseif maxBound and val > maxBound then
+    return maxBound
+  else
+    return val
   end
 end
 
@@ -83,7 +87,8 @@ A.tostrings = tostrings
 --- @return string
 local function tovstring(val)
   if type(val) == "table" then
-    if isEmpty(val) then return "{}"
+    if isEmpty(val) then
+      return "{}"
     elseif #val > 0 then
       local output = {}
       for i = 1, #val do
@@ -551,8 +556,10 @@ A.hueToCol = hueToCol
 --- @param text string
 --- @param col number[] | Color | string
 local function colorify(text, col)
-  if type(col) ~= "string" then col = colToHex(col)
-  elseif col:sub(1, 1) == "#" then col = col:sub(2)
+  if type(col) ~= "string" then
+    col = colToHex(col)
+  elseif col:sub(1, 1) == "#" then
+    col = col:sub(2)
   end
   if #col == 6 then col = "FF" .. col end
   return "|c" .. col .. tostring(text) .. "|r"
@@ -716,7 +723,8 @@ local function npairs(val, depth, check)
   local i = {}
   local done = false
 
-  if depth <= 1 then return function()
+  if depth <= 1 then
+    return function()
       if done then return end
       done = true
       return val
@@ -770,19 +778,27 @@ local function buildfunc(before, oldfunc, after)
   if type(oldfunc) == "function" then
     if type(before) == "function" then
       if type(after) == "function" then
-        return function(...) before(...); oldfunc(...); after(...) end
+        return function(...)
+          before(...); oldfunc(...); after(...)
+        end
       else
-        return function(...) before(...); oldfunc(...) end
+        return function(...)
+          before(...); oldfunc(...)
+        end
       end
     else
       if type(after) == "function" then
-        return function(...) oldfunc(...); after(...) end
+        return function(...)
+          oldfunc(...); after(...)
+        end
       end
     end
   else
     if type(before) == "function" then
       if type(after) == "function" then
-        return function(...) before(...); after(...) end
+        return function(...)
+          before(...); after(...)
+        end
       else
         return function(...) before(...) end
       end

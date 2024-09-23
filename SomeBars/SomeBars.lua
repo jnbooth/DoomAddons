@@ -12,15 +12,14 @@ local D = LibStub("DoomCore-2.1")
 local Addon = D.Addon(shortName, "Some Bars", N)
 Addon.version = 1.0
 
-local CreateFrame, GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell, IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent = CreateFrame
-    , GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell,
-    IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent
-local assertType, colUnpack, flip, getItemID, nilSort, setIndex, tappend, TypeCode = A.assertType, A.colUnpack,
-    A.flip,
+local CreateFrame, GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown, IsPlayerSpell, IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent =
+    CreateFrame, GetSpellCharges, GetSpellBaseCooldown, GetSpellCooldown, GetSpellInfo, GetTime, InCombatLockdown,
+    IsPlayerSpell, IsSpellKnown, min, next, pairs, select, strsub, tinsert, unpack, UIParent
+local assertType, colUnpack, flip, getItemID, nilSort, setIndex, tappend, TypeCode = A.assertType, A.colUnpack, A.flip,
     A.getItemID, A.nilSort, A.setIndex, A.tappend, A.TypeCode
-local borders, convertDims, direction, growAnchors, HORIZONTAL, NodeCrawler, orientGrowth, subInfo, updateFrame = D.borders
-    ,
-    D.convertDims, D.direction, D.growAnchors, D.HORIZONTAL, D.NodeCrawler, D.orientGrowth, D.subInfo, D.updateFrame
+local borders, convertDims, direction, growAnchors, HORIZONTAL, NodeCrawler, orientGrowth, subInfo, updateFrame =
+    D.borders, D.convertDims, D.direction, D.growAnchors, D.HORIZONTAL, D.NodeCrawler, D.orientGrowth, D.subInfo,
+    D.updateFrame
 
 local type_number, type_string, type_table = TypeCode.Number, TypeCode.String, TypeCode.Table
 
@@ -117,7 +116,7 @@ function Addon:Migrate(version)
   if version < 0.2 then
     for groupName, group in pairs(core) do
       if type(group) == "table" and group.type == "group" then
-        local growth = group--[[@as { growth: string | nil }]] .growth
+        local growth = group --[[@as { growth: string | nil }]].growth
         if growth == "up" then group.grow = "TOP" end
         if growth == "down" then group.grow = "BOTTOM" end
         if group.grow == "up" then group.grow = "TOP" end
@@ -136,9 +135,9 @@ function Addon:Migrate(version)
     end
   end
   if version < 0.4 then
-    core.Extras = core--[[@as any]] ._debug
+    core.Extras = core --[[@as any]]._debug
     core._debug = nil
-    core.Groups = core--[[@as any]] .groups
+    core.Groups = core --[[@as any]].groups
     core.groups = nil
   end
   if version < 0.5 then
@@ -186,8 +185,8 @@ function Addon:Migrate(version)
   end
   if version < 0.9 then
     for _, group in pairs(core.Groups) do
-      group.barBackgroundColor = group--[[@as any]] .bg
-      group.barBorderColor = group--[[@as any]] .border
+      group.barBackgroundColor = group --[[@as any]].bg
+      group.barBorderColor = group --[[@as any]].border
     end
   end
   if version < 1.0 then

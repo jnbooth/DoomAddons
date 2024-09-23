@@ -13,12 +13,12 @@ function AA(addon)
   return AceAddon:GetAddon(addon, true)
 end
 
-local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring, type, UIParent, unpack = BNGetInfo
-    , ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring,
+local BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring, type, UIParent, unpack =
+    BNGetInfo, ceil, CreateFrame, error, floor, min, next, rawget, pairs, print, select, setmetatable, tonumber, tostring,
     type, UIParent, unpack
-local assertType, capitalize, colPack, colUnpack, Inherits, setIndex, sublist, tappend, tostrings, TypeCode = A.assertType
-    , A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend,
-    A.tostrings, A.TypeCode
+local assertType, capitalize, colPack, colUnpack, Inherits, setIndex, sublist, tappend, tostrings, TypeCode =
+    A.assertType, A.capitalize, A.colPack, A.colUnpack, A.Inherits, A.setIndex, A.sublist, A.tappend, A.tostrings,
+    A.TypeCode
 
 local type_boolean, type_number, type_string, type_table = TypeCode.Boolean, TypeCode.Number, TypeCode.String,
     TypeCode.Table
@@ -132,7 +132,8 @@ local growAnchors = {
   CENTER = { "CENTER", "CENTER", 0, 0 }
 }
 D.growAnchors = growAnchors
-for _, dir1 in pairs({ "LEFT", "RIGHT" }) do for _, dir2 in pairs({ "TOP", "BOTTOM" }) do
+for _, dir1 in pairs({ "LEFT", "RIGHT" }) do
+  for _, dir2 in pairs({ "TOP", "BOTTOM" }) do
     growAnchors[compound(growAnchors[dir1][1], growAnchors[dir2][1])] = { nil, nil, growAnchors[dir1][3],
       growAnchors[dir2][4] }
   end
@@ -659,9 +660,13 @@ end
 --- @overload fun(self: Configuration, info: tablekey[], r: number, g: number, b: number, a?: number): Color
 --- @overload fun(self: Configuration, info: tablekey[], val: any): any
 function Configuration:ConfSet(info, r, g, b, a)
-  if b ~= nil then return self:Set(info, colPack(r, g, b, a))
-  elseif tonumber(r) then return self:Set(info, tonumber(r))
-  else return self:Set(info, r) end
+  if b ~= nil then
+    return self:Set(info, colPack(r, g, b, a))
+  elseif tonumber(r) then
+    return self:Set(info, tonumber(r))
+  else
+    return self:Set(info, r)
+  end
 end
 
 --- @param info tablekey[]
@@ -1124,8 +1129,11 @@ function Handler:Draggable(frame, conf, funcName)
   if frame:GetScript("OnReceiveDrag") then return end
   funcName = funcName or "Rebuild"
   local func = function()
-    if type(funcName) == "function" then funcName()
-    elseif type(self[funcName]) == "function" then self[funcName](self) end
+    if type(funcName) == "function" then
+      funcName()
+    elseif type(self[funcName]) == "function" then
+      self[funcName](self)
+    end
     self.lib.registry:NotifyChange(self.name)
   end
   draggable(frame, conf, func)
@@ -1303,7 +1311,8 @@ for _, check in pairs({ "disabled", "hidden", "confirm" }) do
   checks[check] = true
 end
 local function ensureCheck(k, v)
-  if checks[k] and type(v) == "table" then return function(info)
+  if checks[k] and type(v) == "table" then
+    return function(info)
       tremove(info)
       return info.handler:Check(v, info)
     end
@@ -1333,7 +1342,8 @@ local function optCopy(optOut, body)
       local args = optOut[k]
       local shift = 0
       for i, arg in pairs(v) do
-        if type(arg) == "number" then shift = arg - i - 1
+        if type(arg) == "number" then
+          shift = arg - i - 1
         elseif type(i) == "number" then
           local newI, optType, name, body = unpack(arg)
           if type(name) == "table" then
@@ -1390,133 +1400,171 @@ end
 D.opt = opt
 
 local configTemplates = {
-  space = { __index = {
-    type = "description",
-    name = "",
-    width = "full"
-  } },
-  label = { __index = {
-    type = "description",
-    width = "half",
-    fontSize = "medium"
-  } },
-  text = { __index = {
-    type = "description",
-    width = "full",
-    fontSize = "medium"
-  } },
-  background = { __index = {
-    name = "Background",
-    type = "select",
-    dialogControl = "LSM30_Background",
-    values = SharedMedia:HashTable(SharedMedia.MediaType.BACKGROUND)
-  } },
-  border = { __index = {
-    name = "Border",
-    type = "select",
-    dialogControl = "LSM30_Border",
-    values = SharedMedia:HashTable(SharedMedia.MediaType.BORDER)
-  } },
-  font = { __index = {
-    name = "Font",
-    type = "select",
-    dialogControl = "LSM30_Font",
-    values = SharedMedia:HashTable(SharedMedia.MediaType.FONT)
-  } },
-  fontSize = { __index = {
-    type = "range",
-    name = "Font size",
-    min = 1,
-    max = 100,
-    softMin = 10,
-    softMax = 50,
-    step = 1
-  } },
-  iconSize = { __index = {
-    type = "range",
-    name = "Icon size",
-    min = 1,
-    max = 100,
-    softMin = 5,
-    softMax = 50,
-    step = 0.5
-  } },
-  iconSpacing = { __index = {
-    type = "range",
-    name = "Icon Spacing",
-    min = -100,
-    max = 100,
-    softMin = -20,
-    softMax = 20,
-    step = 0.5
-  } },
-  borderSize = { __index = {
-    type = "range",
-    name = "Border size",
-    min = 1,
-    max = 100,
-    softMax = 36,
-    step = 0.5
-  } },
-  inset = { __index = {
-    type = "range",
-    name = "Inset",
-    min = 0,
-    max = 100,
-    softMax = 36,
-    step = 0.5
-  } },
-  anchor = { __index = {
-    type = "select",
-    name = "Anchor",
-    values = anchors
-  } },
-  offsetX = { __index = {
-    type = "range",
-    name = "X",
-    min = -floor(UIParent:GetWidth()),
-    max = floor(UIParent:GetWidth()),
-    step = 0.5,
-  } },
-  offsetY = { __index = {
-    type = "range",
-    name = "Y",
-    min = -floor(UIParent:GetHeight()),
-    max = floor(UIParent:GetHeight()),
-    step = 0.5,
-  } },
-  grow = { __index = {
-    type = "select",
-    name = "Grow",
-    values = grow
-  } },
-  orientation = { __index = {
-    type = "select",
-    name = "Orientation",
-    values = D.orientations,
-  } },
-  color = { __index = {
-    name = "Color",
-    type = "color",
-    hasAlpha = true,
-    width = "half"
-  } },
-  percent = { __index = {
-    type = "range",
-    min = 0,
-    max = 1,
-    step = 0.01,
-    isPercent = true
-  } },
-  scale = { __index = {
-    type = "range",
-    name = "Scale",
-    min = 0.001,
-    max = 10,
-    softMax = 2,
-    step = 0.001,
-    isPercent = true
-  } },
+  space = {
+    __index = {
+      type = "description",
+      name = "",
+      width = "full"
+    }
+  },
+  label = {
+    __index = {
+      type = "description",
+      width = "half",
+      fontSize = "medium"
+    }
+  },
+  text = {
+    __index = {
+      type = "description",
+      width = "full",
+      fontSize = "medium"
+    }
+  },
+  background = {
+    __index = {
+      name = "Background",
+      type = "select",
+      dialogControl = "LSM30_Background",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.BACKGROUND)
+    }
+  },
+  border = {
+    __index = {
+      name = "Border",
+      type = "select",
+      dialogControl = "LSM30_Border",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.BORDER)
+    }
+  },
+  font = {
+    __index = {
+      name = "Font",
+      type = "select",
+      dialogControl = "LSM30_Font",
+      values = SharedMedia:HashTable(SharedMedia.MediaType.FONT)
+    }
+  },
+  fontSize = {
+    __index = {
+      type = "range",
+      name = "Font size",
+      min = 1,
+      max = 100,
+      softMin = 10,
+      softMax = 50,
+      step = 1
+    }
+  },
+  iconSize = {
+    __index = {
+      type = "range",
+      name = "Icon size",
+      min = 1,
+      max = 100,
+      softMin = 5,
+      softMax = 50,
+      step = 0.5
+    }
+  },
+  iconSpacing = {
+    __index = {
+      type = "range",
+      name = "Icon Spacing",
+      min = -100,
+      max = 100,
+      softMin = -20,
+      softMax = 20,
+      step = 0.5
+    }
+  },
+  borderSize = {
+    __index = {
+      type = "range",
+      name = "Border size",
+      min = 1,
+      max = 100,
+      softMax = 36,
+      step = 0.5
+    }
+  },
+  inset = {
+    __index = {
+      type = "range",
+      name = "Inset",
+      min = 0,
+      max = 100,
+      softMax = 36,
+      step = 0.5
+    }
+  },
+  anchor = {
+    __index = {
+      type = "select",
+      name = "Anchor",
+      values = anchors
+    }
+  },
+  offsetX = {
+    __index = {
+      type = "range",
+      name = "X",
+      min = -floor(UIParent:GetWidth()),
+      max = floor(UIParent:GetWidth()),
+      step = 0.5,
+    }
+  },
+  offsetY = {
+    __index = {
+      type = "range",
+      name = "Y",
+      min = -floor(UIParent:GetHeight()),
+      max = floor(UIParent:GetHeight()),
+      step = 0.5,
+    }
+  },
+  grow = {
+    __index = {
+      type = "select",
+      name = "Grow",
+      values = grow
+    }
+  },
+  orientation = {
+    __index = {
+      type = "select",
+      name = "Orientation",
+      values = D.orientations,
+    }
+  },
+  color = {
+    __index = {
+      name = "Color",
+      type = "color",
+      hasAlpha = true,
+      width = "half"
+    }
+  },
+  percent = {
+    __index = {
+      type = "range",
+      min = 0,
+      max = 1,
+      step = 0.01,
+      isPercent = true
+    }
+  },
+  scale = {
+    __index = {
+      type = "range",
+      name = "Scale",
+      min = 0.001,
+      max = 10,
+      softMax = 2,
+      step = 0.001,
+      isPercent = true
+    }
+  },
 }
 
 --- @class _ColorBase: AceOptionColor

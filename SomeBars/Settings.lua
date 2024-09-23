@@ -7,7 +7,7 @@ local A = LibStub("Abacus-2.0")
 local D = LibStub("DoomCore-2.1")
 
 local GetSpellInfo, next, select, tconcat, tinsert, tostring, type, UIParent, UnitRace = GetSpellInfo, next, select,
-    tconcat, tinsert, tostring, type, UIParent, UnitRace
+tconcat, tinsert, tostring, type, UIParent, UnitRace
 local tappend, convertDims, orderNum, opt, subInfo = A.tappend, D.convertDims, A.orderNum, D.opt, D.subInfo
 
 ------------
@@ -82,7 +82,7 @@ function Settings:BuildGroupSettings(groupName, group)
   local opts = opt(100 + orderNum(name), "group", name, {
     set = "Rebuild",
     args = {
-      { "bars", "parent" },
+      { "bars",        "parent" },
       { "rename", "input", {
         get = "GetParentName",
         set = "RenameGroup",
@@ -97,7 +97,7 @@ function Settings:BuildGroupSettings(groupName, group)
       { "iconSpacing" },
       { "space" },
       { "grow" },
-      { "orientation", nil, "Bar orientation" },
+      { "orientation", nil,     "Bar orientation" },
       { "spacing", "range", "Bar spacing", {
         min = -10,
         max = 1000,
@@ -133,13 +133,13 @@ function Settings:BuildGroupSettings(groupName, group)
       } },
       { "space" },
       { "anchor" },
-      { "lock", { width = "half" } },
+      { "lock",               { width = "half" } },
       { "space" },
       { "offsetX" },
       { "offsetY" },
       { "space" },
-      { "barBackgroundColor", "aColor", "Background" },
-      { "barBorderColor", "aColor", "Border" },
+      { "barBackgroundColor", "aColor",          "Background" },
+      { "barBorderColor",     "aColor",          "Border" },
       { "delete", "execute", {
         func = "DeleteGroup"
       } },

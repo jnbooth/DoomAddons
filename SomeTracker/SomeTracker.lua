@@ -13,13 +13,14 @@ local D = LibStub("DoomCore-2.1")
 local Addon = D.Addon(shortName, "Some Tracker", N)
 Addon.version = 1.4
 
-local CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace = CreateFrame
-    , CombatLog_Object_IsA, floor, GetTime, GetSpecialization,
-    GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type,
-    unpack, UIParent, AuraUtil.FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace
+local CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo, IsPassiveSpell, pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, FindAuraByName, UnitClass, UnitGUID, UnitHealthMax, UnitName, UnitRace =
+    CreateFrame, CombatLog_Object_IsA, floor, GetTime, GetSpecialization, GetSpellDescription, GetSpellInfo,
+    IsPassiveSpell,
+    pairs, rawget, select, tinsert, tostring, type, unpack, UIParent, AuraUtil.FindAuraByName, UnitClass, UnitGUID,
+    UnitHealthMax, UnitName, UnitRace
 
-local abbrev, assertType, capitalize, colPack, colUnpack, isEmpty, nilSort, subInfo, NodeCrawler, setFont, TypeCode, updateFrame = A
-    .abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, D.subInfo, D.NodeCrawler,
+local abbrev, assertType, capitalize, colPack, colUnpack, isEmpty, nilSort, subInfo, NodeCrawler, setFont, TypeCode, updateFrame =
+    A.abbrev, A.assertType, A.capitalize, A.colPack, A.colUnpack, A.isEmpty, A.nilSort, D.subInfo, D.NodeCrawler,
     D.setFont, A.TypeCode, D.updateFrame
 
 local type_string, type_table = TypeCode.String, TypeCode.Table
@@ -112,7 +113,7 @@ function Addon:Migrate(version)
   if version < 1.0 then return true end
   local core = self.core
   if version < 1.1 then
-    for trackerName, tracker in pairs(core--[[@as any]] .trackers) do
+    for trackerName, tracker in pairs(core --[[@as any]].trackers) do
       local oldGrow = tracker.grow
       if oldGrow == "up" then
         tracker.grow = "TOP"
@@ -123,7 +124,7 @@ function Addon:Migrate(version)
   end
   if version < 1.2 then
     local fieldsToMigrate = { "anchor", "columnGrowth", "grow", "grow2", "rowGrowth" }
-    for _, tracker in pairs(core--[[@as any]] .trackers) do
+    for _, tracker in pairs(core --[[@as any]].trackers) do
       for _, field in ipairs(fieldsToMigrate) do
         local old = tracker[field]
         if type(old) == "string" then
@@ -146,11 +147,11 @@ function Addon:Migrate(version)
     end
   end
   if version < 1.4 then
-    self.core.Extras = self.core--[[@as any]] ._debug
+    self.core.Extras = self.core --[[@as any]]._debug
     self.core._debug = nil
-    self.core.Trackers = self.core--[[@as any]] .trackers
+    self.core.Trackers = self.core --[[@as any]].trackers
     self.core.trackers = nil
-    self.core["High Scores"] = self.core--[[@as any]] .scoring
+    self.core["High Scores"] = self.core --[[@as any]].scoring
     self.core.scoring = nil
   end
   return false
@@ -314,7 +315,7 @@ function Addon:InitButton(button, frame, tracker)
   end
 
   animations:SetScript("OnFinished", function()
-    HighScores:Score(button.metername, button.amount + button.over, button.icon:GetTexture()--[[@as number]] ,
+    HighScores:Score(button.metername, button.amount + button.over, button.icon:GetTexture() --[[@as number]],
       colPack(button.text:GetTextColor()))
     button:Hide()
     for _, highlight in pairs(button.highlight) do
@@ -612,9 +613,11 @@ function Addon:Match(spellName, spellID, trackerName, seconds, destGUID, log)
         for missType, missAmount in pairs(log.miss) do
           if not tracker.missType or tracker.missType[missType] then
             self:BuildAlert(trackerName, meter, meter, color, spellID,
-              { cat = missType,
+              {
+                cat = missType,
                 amount = missAmount,
-                timed = log.timed })
+                timed = log.timed
+              })
           end
         end
       end
@@ -643,7 +646,8 @@ local summoned = {}
 
 --- @return nil
 function Addon:COMBAT_LOG_EVENT_UNFILTERED()
-  local timed, suffix, hide, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, amount, overflow, school, resisted, blocked, absorbed, crit, extra = CombatLogGetCurrentEventInfo()
+  local timed, suffix, hide, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName, destFlags, destRaidFlags, spellID, spellName, spellSchool, amount, overflow, school, resisted, blocked, absorbed, crit, extra =
+      CombatLogGetCurrentEventInfo()
   local kind
   if suffix == "SPELL_CAST_SUCCESS" then
     kind = "spell"
@@ -671,7 +675,7 @@ function Addon:COMBAT_LOG_EVENT_UNFILTERED()
           spellSchool, resisted, blocked, absorbed, crit, extra
     else
       sourceGUID, sourceName, sourceFlags, sourceRaidFlags, spellID, spellName, spellSchool, amount = spellID, spellName
-          , spellSchool, amount, overflow, school, resisted, blocked
+      , spellSchool, amount, overflow, school, resisted, blocked
     end
     ---@diagnostic disable-next-line: unbalanced-assignments
     overflow, spellSchool, resisted, blocked, absorbed, crit, extra = nil
@@ -683,12 +687,12 @@ function Addon:COMBAT_LOG_EVENT_UNFILTERED()
   if sourceName == "Wild Imp" then return end -- There's just too many of the damned things.
   local unitMatch = sourceGUID == player.id
   local petMatch = not unitMatch and sourceFlags ~= nil and (
-      CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_MY_PET) or
-          CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_MINE))
+    CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_MY_PET) or
+    CombatLog_Object_IsA(sourceFlags, COMBATLOG_FILTER_MINE))
 
   local destMatch = destGUID == player.id or destFlags ~= nil and (
-      CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_MY_PET) or CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_MINE)
-      )
+    CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_MY_PET) or CombatLog_Object_IsA(destFlags, COMBATLOG_FILTER_MINE)
+  )
   if destMatch and kind == "damage" then return end
 
   if not unitMatch and not petMatch then return end
@@ -797,7 +801,8 @@ function Addon:ResolveLog()
   if not lastLog then return end
   for key, logged in pairs(lastLog) do
     local kind, timed, seconds, sourceName, petMatch, destGUID, spellID, spellName = unpack(lastKeys[key])
-    if spellName then for trackerName in pairs(frames) do
+    if spellName then
+      for trackerName in pairs(frames) do
         local tracker = trackers[trackerName]
         if tracker and tracker.enabled and (not kind or kind == tracker.trackerType) then
           self:Match(spellName, spellID, trackerName, seconds, destGUID, logged)
